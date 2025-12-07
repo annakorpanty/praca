@@ -140,7 +140,8 @@ generateButton.addEventListener("click", () => {
   }
   const month = Number(monthSelect.value);
   const year = Number(yearSelect.value);
-  const schedule = buildSchedule(appState.workers, month, year);
+  const existingLocks = appState.currentSchedule ? appState.currentSchedule.schedule.rows : [];
+  const schedule = buildSchedule(appState.workers, month, year, existingLocks);
   appState.currentSchedule = { schedule, month, year };
   renderAppSchedule();
 });
@@ -297,9 +298,24 @@ function renderSchedule(schedule, highlights = { columns: [], cells: [] }) {
       if (dayMeta?.isSunday) {
         td.classList.add("day-sunday");
       }
-      if (highlightedColumns.has(index) || highlightedCells.has(`${row.id}:${index}`)) {
+      const cellKey = `${row.id}:${index}`;
+      const isHighlighted = highlightedColumns.has(index) || highlightedCells.has(cellKey);
+      if (isHighlighted) {
         td.classList.add("day-warning");
       }
+      const cellWrapper = document.createElement("div");
+      cellWrapper.className = "cell-wrapper";
+
+      const lockButton = document.createElement("button");
+      const isLocked = Array.isArray(row.locks) ? Boolean(row.locks[index]) : false;
+      lockButton.type = "button";
+      lockButton.className = isLocked ? "lock-btn locked" : "lock-btn";
+      lockButton.textContent = isLocked ? "🔒" : "🔓";
+      lockButton.title = isLocked ? "Odblokuj komórkę" : "Zablokuj komórkę";
+      lockButton.addEventListener("click", () => {
+        toggleCellLock(row.id, index);
+      });
+
       const select = document.createElement("select");
       select.className = "slot-select";
       [
@@ -314,12 +330,15 @@ function renderSchedule(schedule, highlights = { columns: [], cells: [] }) {
         select.append(option);
       });
       select.value = slot || "";
+      select.disabled = isLocked;
       select.addEventListener("change", (event) => {
         const newValue = event.target.value;
         updateSlotValue(row.id, index, newValue === "" ? null : newValue);
       });
       applySlotClasses(td, select.value);
-      td.append(select);
+      cellWrapper.append(lockButton);
+      cellWrapper.append(select);
+      td.append(cellWrapper);
       tr.append(td);
     });
     tbody.append(tr);
@@ -347,10 +366,32 @@ function updateSlotValue(rowId, dayIndex, value) {
   }
   const { schedule } = appState.currentSchedule;
   const row = schedule.rows.find((item) => item.id === rowId);
-  if (!row || !Array.isArray(row.slots) || dayIndex < 0 || dayIndex >= row.slots.length) {
+  if (
+    !row ||
+    !Array.isArray(row.slots) ||
+    dayIndex < 0 ||
+    dayIndex >= row.slots.length ||
+    (Array.isArray(row.locks) && row.locks[dayIndex])
+  ) {
     return;
   }
   row.slots[dayIndex] = value === "D" || value === "N" || value === "U" ? value : null;
+  renderAppSchedule();
+}
+
+function toggleCellLock(rowId, dayIndex) {
+  if (!appState.currentSchedule) {
+    return;
+  }
+  const { schedule } = appState.currentSchedule;
+  const row = schedule.rows.find((item) => item.id === rowId);
+  if (!row || dayIndex < 0 || dayIndex >= row.slots.length) {
+    return;
+  }
+  if (!Array.isArray(row.locks)) {
+    row.locks = Array(row.slots.length).fill(false);
+  }
+  row.locks[dayIndex] = !row.locks[dayIndex];
   renderAppSchedule();
 }
 
@@ -378,7 +419,7 @@ function renderSummary(summary) {
   table.className = "summary-table";
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  ["Pracownik", "Godziny", "Dzień", "Noc", "Urlop", "Nadgodziny", "Uwagi"].forEach((label) => {
+  ["Recepcjonista", "Godziny", "Dzień", "Noc", "Urlop", "Nadgodziny", "Uwagi"].forEach((label) => {
     const th = document.createElement("th");
     th.textContent = label;
     headRow.append(th);
@@ -612,7 +653,7 @@ function formatPreference(value) {
   }
 }
 
-function buildSchedule(workers, month, year) {
+function buildSchedule(workers, month, year, lockedRows = []) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const dayMetadata = Array.from({ length: daysInMonth }, (_, index) => {
     const date = new Date(year, month - 1, index + 1);
@@ -625,12 +666,34 @@ function buildSchedule(workers, month, year) {
     };
   });
 
+  const lockedMap = new Map();
+  lockedRows.forEach((row) => {
+    if (!row || !row.id || !Array.isArray(row.slots)) {
+      return;
+    }
+    lockedMap.set(row.id, {
+      slots: row.slots,
+      locks: Array.isArray(row.locks) ? row.locks : Array(row.slots.length).fill(false),
+    });
+  });
+
   const assignmentMap = new Map();
   workers.forEach((worker, order) => {
+    const lockedEntry = lockedMap.get(worker.id);
+    const baseSlots = Array(daysInMonth).fill(null);
+    const baseLocks = Array(daysInMonth).fill(false);
+    if (lockedEntry) {
+      for (let i = 0; i < daysInMonth; i += 1) {
+        const locked = Boolean(lockedEntry.locks[i]);
+        baseLocks[i] = locked;
+        baseSlots[i] = locked ? lockedEntry.slots[i] || null : null;
+      }
+    }
     assignmentMap.set(worker.id, {
       worker,
       order,
-      slots: Array(daysInMonth).fill(null),
+      slots: baseSlots,
+      locks: baseLocks,
       totalHours: 0,
       nightsAssigned: 0,
       lastAssignedIndex: -5,
@@ -638,6 +701,23 @@ function buildSchedule(workers, month, year) {
       dayAssignments: 0,
       nightAssignments: 0,
       block: { type: null, length: 0, target: 0 },
+    });
+  });
+
+  // Seed totals and counts for locked assignments
+  assignmentMap.forEach((entry) => {
+    entry.slots.forEach((slot, index) => {
+      if ((slot === "D" || slot === "N") && entry.locks[index]) {
+        entry.totalHours += entry.worker.shiftHours;
+        if (slot === "D") {
+          entry.dayAssignments += 1;
+        }
+        if (slot === "N") {
+          entry.nightAssignments += 1;
+          entry.nightsAssigned += 1;
+        }
+        entry.lastAssignedIndex = index;
+      }
     });
   });
 
@@ -652,6 +732,7 @@ function buildSchedule(workers, month, year) {
       id: worker.id,
       name: worker.name,
       slots: entry ? entry.slots : Array(daysInMonth).fill(null),
+      locks: entry ? entry.locks : Array(daysInMonth).fill(false),
     };
   });
 
@@ -718,6 +799,9 @@ function buildSchedule(workers, month, year) {
       return false;
     }
     const { worker, slots, totalHours } = entry;
+    if (entry.locks && entry.locks[meta.index]) {
+      return false;
+    }
     if (slots[meta.index]) {
       return false;
     }
@@ -934,7 +1018,7 @@ function computeSummaryFromSchedule(schedule, workers) {
       warnings.push(`${row.name} przekracza 168h o ${totalHours - 168}h.`);
     }
     if (totalHours > maxHours) {
-      warnings.push(`Zaplanowano ${totalHours}h przy limicie ${maxHours}h.`);
+      warnings.push(`${row.name} zaplanowano ${totalHours}h przy limicie ${maxHours}h.`);
     }
     return {
       name: row.name,
