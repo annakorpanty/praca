@@ -272,7 +272,7 @@ function renderAppSchedule() {
   const insights = deriveScheduleInsights(schedule, month, year, appState.workers);
   renderSchedule(schedule, {
     columns: insights.coverage.missingDayIndexes,
-    cells: insights.nightToDay.cells,
+    cells: [...insights.nightToDay.cells, ...insights.blockedDay.cells],
   });
   renderWarnings(insights.warnings);
   renderSummary(insights.summary);
@@ -975,16 +975,19 @@ function updateSchedulePeriodText(month, year) {
 function deriveScheduleInsights(schedule, month, year, workers) {
   const coverage = computeCoverage(schedule, month, year);
   const nightToDay = computeNightToDayWarnings(schedule, month, year);
+  const blockedDay = computeBlockedDayWarnings(schedule, appState.workers);
   const summary = computeSummaryFromSchedule(schedule, workers);
   const summaryWarnings = summary.flatMap((entry) => entry.warnings);
   return {
     coverage,
     nightToDay,
+    blockedDay,
     summary,
     warnings: [
       ...(schedule?.warnings || []),
       ...coverage.warnings,
       ...nightToDay.warnings,
+      ...blockedDay.warnings,
       ...summaryWarnings,
     ],
   };
@@ -1047,6 +1050,44 @@ function computeNightToDayWarnings(schedule, month, year) {
         cells.push({ rowId: row.id, dayIndex: index - 1 });
       }
       warnings.push(`${formatDate(date)} zmiana N→D dla ${row.name}.`);
+    });
+  });
+
+  return { cells, warnings };
+}
+
+function computeBlockedDayWarnings(schedule, workers) {
+  if (!schedule) {
+    return { cells: [], warnings: [] };
+  }
+  const warnings = [];
+  const cells = [];
+  const workerMap = new Map();
+  workers.forEach((worker) => {
+    workerMap.set(worker.id, worker);
+  });
+
+  schedule.rows.forEach((row) => {
+    const worker = workerMap.get(row.id);
+    if (!worker || !Array.isArray(worker.blockedWeekdays) || worker.blockedWeekdays.length === 0) {
+      return;
+    }
+    row.slots.forEach((slot, index) => {
+      if (slot !== "D" && slot !== "N") {
+        return;
+      }
+      const dayMeta = schedule.days[index];
+      if (!dayMeta) {
+        return;
+      }
+      const dowIndex = dayMeta.date ? dayMeta.date.getDay() : DAY_NAMES.indexOf(dayMeta.dow);
+      if (worker.blockedWeekdays.includes(dowIndex)) {
+        cells.push({ rowId: row.id, dayIndex: index });
+        const date = dayMeta.date || new Date(dayMeta.year || new Date().getFullYear(), dowIndex, dayMeta.day);
+        warnings.push(
+          `${formatDate(date)} ${worker.name} ma blokadę dnia, a przydzielono zmianę ${slot}.`,
+        );
+      }
     });
   });
 
