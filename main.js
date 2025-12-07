@@ -6,6 +6,7 @@ const cancelEditButton = document.querySelector("#cancel-edit-btn");
 const workerListElement = document.querySelector("#worker-list");
 const generateButton = document.querySelector("#generate-btn");
 const scheduleOutput = document.querySelector("#schedule-output");
+const schedulePeriod = document.querySelector("#schedule-period");
 const warningsList = document.querySelector("#warnings-list");
 const summaryCardsContainer = document.querySelector("#summary-cards");
 const workerRowTemplate = document.querySelector("#worker-row-template");
@@ -54,6 +55,7 @@ const DEFAULT_FORM_VALUES = {
   maxHours: String(DEFAULT_FORM_NUMBERS.maxHours),
   shiftHours: String(DEFAULT_FORM_NUMBERS.shiftHours),
   preference: "balanced",
+  blockedWeekdays: [],
 };
 
 const appState = {
@@ -67,6 +69,7 @@ initSelectors();
 workerForm.reset();
 setDefaultFormValues();
 renderWorkers();
+updateSchedulePeriodText(Number(monthSelect.value), Number(yearSelect.value));
 scheduleOutput.classList.add("empty-state");
 
 if (openWorkerModalButton) {
@@ -107,7 +110,7 @@ workerForm.addEventListener("submit", (event) => {
     );
     persistWorkers();
     renderWorkers();
-    closeWorkerModal();
+    exitEditingMode();
     return;
   }
 
@@ -120,7 +123,8 @@ workerForm.addEventListener("submit", (event) => {
   appState.workers.push(worker);
   persistWorkers();
   renderWorkers();
-  closeWorkerModal();
+  workerForm.reset();
+  setDefaultFormValues();
 });
 
 cancelEditButton.addEventListener("click", () => {
@@ -139,6 +143,14 @@ generateButton.addEventListener("click", () => {
   const schedule = buildSchedule(appState.workers, month, year);
   appState.currentSchedule = { schedule, month, year };
   renderAppSchedule();
+});
+
+monthSelect.addEventListener("change", () => {
+  updateSchedulePeriodText(Number(monthSelect.value), Number(yearSelect.value));
+});
+
+yearSelect.addEventListener("change", () => {
+  updateSchedulePeriodText(Number(monthSelect.value), Number(yearSelect.value));
 });
 
 function initSelectors() {
@@ -181,9 +193,23 @@ function renderWorkers() {
     const details = `${worker.shiftHours}h zmiana • ≤${worker.maxHours}h / miesiąc`;
     row.querySelector("[data-worker-details]").textContent = details;
     row.querySelector("[data-worker-preference]").textContent = formatPreference(worker.preference);
-    row.querySelector("[data-worker-weekend]").textContent = worker.noWeekends
-      ? "Bez weekendów"
-      : "Weekendy dozwolone";
+    const blockedTags = [];
+    if (Array.isArray(worker.blockedWeekdays) && worker.blockedWeekdays.length) {
+      const names = worker.blockedWeekdays
+        .map((dow) => DAY_NAMES[dow] || "")
+        .filter(Boolean)
+        .join(", ");
+      blockedTags.push(`Nie pracuje: ${names}`);
+    }
+    if (blockedTags.length) {
+      const tagGrid = row.querySelector(".tag-grid");
+      blockedTags.forEach((text) => {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = text;
+        tagGrid.append(tag);
+      });
+    }
     const editButton = row.querySelector(".edit-btn");
     editButton.addEventListener("click", () => {
       startEditing(worker);
@@ -197,17 +223,21 @@ function renderWorkers() {
 }
 
 function renderAppSchedule() {
+  const selectedMonth = appState.currentSchedule ? appState.currentSchedule.month : Number(monthSelect.value);
+  const selectedYear = appState.currentSchedule ? appState.currentSchedule.year : Number(yearSelect.value);
+  updateSchedulePeriodText(selectedMonth, selectedYear);
+
   if (!appState.currentSchedule) {
     renderSchedule(null);
     renderWarnings([]);
-    renderSummary([], Number(monthSelect.value), Number(yearSelect.value));
+    renderSummary([]);
     return;
   }
   const { schedule, month, year } = appState.currentSchedule;
   const insights = deriveScheduleInsights(schedule, month, year, appState.workers);
   renderSchedule(schedule, insights.coverage.missingDayIndexes);
   renderWarnings(insights.warnings);
-  renderSummary(insights.summary, month, year);
+  renderSummary(insights.summary);
 }
 
 function renderSchedule(schedule, highlightedDayIndexes = []) {
@@ -333,43 +363,46 @@ function renderWarnings(warnings) {
   });
 }
 
-function renderSummary(summary, month, year) {
+function renderSummary(summary) {
   summaryCardsContainer.innerHTML = "";
   if (!summary.length) {
     return;
   }
-  summary.forEach((item) => {
-    const card = document.createElement("article");
-    card.className = "summary-card";
-    const heading = document.createElement("h4");
-    heading.textContent = item.name;
-    card.append(heading);
-
-    const stats = document.createElement("p");
-    stats.textContent = `${item.totalHours}h zaplanowane`;
-    card.append(stats);
-    const metrics = document.createElement("div");
-    metrics.className = "summary-card__metrics";
-    metrics.innerHTML = `<span>D: ${item.dayCount}</span><span>N: ${item.nightCount}</span>`;
-    card.append(metrics);
-
-    const line = document.createElement("p");
-    line.textContent = `${MONTHS[month - 1]} ${year}`;
-    card.append(line);
-
-    if (item.warnings.length) {
-      const warningList = document.createElement("ul");
-      warningList.style.paddingLeft = "1.1rem";
-      warningList.style.color = "#c05621";
-      item.warnings.forEach((note) => {
-        const li = document.createElement("li");
-        li.textContent = note;
-        warningList.append(li);
-      });
-      card.append(warningList);
-    }
-    summaryCardsContainer.append(card);
+  const table = document.createElement("table");
+  table.className = "summary-table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  ["Pracownik", "Godziny", "Dzień", "Noc", "Urlop", "Nadgodziny", "Uwagi"].forEach((label) => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    headRow.append(th);
   });
+  thead.append(headRow);
+  table.append(thead);
+
+  const tbody = document.createElement("tbody");
+  summary.forEach((item) => {
+    const tr = document.createElement("tr");
+    const overtime = item.overtimeHours > 0 ? `${item.overtimeHours}h` : "0h";
+    const holidayCount = item.holidayCount ?? 0;
+    const warningsText = item.warnings.length ? item.warnings.join("; ") : "—";
+    [
+      item.name,
+      `${item.totalHours}h`,
+      String(item.dayCount),
+      String(item.nightCount),
+      String(holidayCount),
+      overtime,
+      warningsText,
+    ].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = value;
+      tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  table.append(tbody);
+  summaryCardsContainer.append(table);
 }
 
 function showWorkerModal(mode = "add") {
@@ -403,6 +436,7 @@ function closeWorkerModal() {
 function extractWorkerPayload(formData) {
   const rawName = formData.get("worker-name");
   const name = rawName ? rawName.trim() : "";
+  const blockedWeekdays = getCheckboxValues(workerForm.querySelector("#worker-block-weekdays"));
   return {
     name,
     maxHours: sanitizeNumber(
@@ -416,8 +450,9 @@ function extractWorkerPayload(formData) {
       { min: 4 },
     ),
     preference: formData.get("worker-preference") || DEFAULT_FORM_VALUES.preference,
-    noWeekends: formData.get("worker-no-weekends") === "on",
+    noWeekends: false,
     enforceHourCap: formData.get("worker-limit-hours") === "on",
+    blockedWeekdays,
   };
 }
 
@@ -427,8 +462,8 @@ function startEditing(worker) {
   workerForm.querySelector("#worker-max-hours").value = String(worker.maxHours);
   workerForm.querySelector("#worker-shift-hours").value = String(worker.shiftHours);
   workerForm.querySelector("#worker-preference").value = worker.preference;
-  workerForm.querySelector("#worker-no-weekends").checked = Boolean(worker.noWeekends);
   workerForm.querySelector("#worker-limit-hours").checked = Boolean(worker.enforceHourCap);
+  setCheckboxValues(workerForm.querySelector("#worker-block-weekdays"), worker.blockedWeekdays || []);
   workerSubmitButton.textContent = BUTTON_LABELS.save;
   cancelEditButton.hidden = false;
   showWorkerModal("edit");
@@ -449,8 +484,8 @@ function setDefaultFormValues() {
   workerForm.querySelector("#worker-max-hours").value = DEFAULT_FORM_VALUES.maxHours;
   workerForm.querySelector("#worker-shift-hours").value = DEFAULT_FORM_VALUES.shiftHours;
   workerForm.querySelector("#worker-preference").value = DEFAULT_FORM_VALUES.preference;
-  workerForm.querySelector("#worker-no-weekends").checked = false;
   workerForm.querySelector("#worker-limit-hours").checked = false;
+  setCheckboxValues(workerForm.querySelector("#worker-block-weekdays"), []);
 }
 
 function deleteWorker(workerId) {
@@ -488,8 +523,13 @@ function hydrateWorkersFromStorage() {
           shiftHours: sanitizeNumber(item.shiftHours, DEFAULT_FORM_NUMBERS.shiftHours, { min: 4 }),
           preference:
             typeof item.preference === "string" ? item.preference : DEFAULT_FORM_VALUES.preference,
-          noWeekends: Boolean(item.noWeekends),
+          noWeekends: false,
           enforceHourCap: Boolean(item.enforceHourCap),
+          blockedWeekdays: Array.isArray(item.blockedWeekdays)
+            ? item.blockedWeekdays
+                .map((value) => Number(value))
+                .filter((num) => Number.isFinite(num))
+            : [],
         };
       });
     normalized.sort((a, b) => a.order - b.order);
@@ -526,6 +566,29 @@ function sanitizeNumber(value, fallback, options = {}) {
     return fallback;
   }
   return parsed;
+}
+
+function getCheckboxValues(container) {
+  if (!container) {
+    return [];
+  }
+  const inputs = container.querySelectorAll('input[type="checkbox"]');
+  return Array.from(inputs)
+    .filter((input) => input.checked)
+    .map((input) => Number(input.value))
+    .filter((num) => Number.isFinite(num));
+}
+
+function setCheckboxValues(container, values) {
+  if (!container) {
+    return;
+  }
+  const valueSet = new Set(values);
+  const inputs = container.querySelectorAll('input[type="checkbox"]');
+  inputs.forEach((input) => {
+    const numeric = Number(input.value);
+    input.checked = Number.isFinite(numeric) && valueSet.has(numeric);
+  });
 }
 
 function formatPreference(value) {
@@ -673,7 +736,12 @@ function buildSchedule(workers, month, year) {
     if (kind === "night" && worker.preference === "only-days") {
       return false;
     }
-
+    if (
+      Array.isArray(worker.blockedWeekdays) &&
+      worker.blockedWeekdays.includes(meta.date.getDay())
+    ) {
+      return false;
+    }
     const wouldExceed = totalHours + worker.shiftHours > worker.maxHours;
     if (respectCap && wouldExceed) {
       return false;
@@ -751,6 +819,18 @@ function formatDate(date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+function updateSchedulePeriodText(month, year) {
+  if (!schedulePeriod) {
+    return;
+  }
+  const monthLabel = MONTHS[month - 1] || "";
+  if (!monthLabel || !year) {
+    schedulePeriod.textContent = "";
+    return;
+  }
+  schedulePeriod.textContent = `${monthLabel} ${year}`;
+}
+
 function deriveScheduleInsights(schedule, month, year, workers) {
   const coverage = computeCoverage(schedule, month, year);
   const summary = computeSummaryFromSchedule(schedule, workers);
@@ -799,7 +879,9 @@ function computeSummaryFromSchedule(schedule, workers) {
     const maxHours = worker ? worker.maxHours : DEFAULT_FORM_NUMBERS.maxHours;
     const dayCount = row.slots.filter((slot) => slot === "D").length;
     const nightCount = row.slots.filter((slot) => slot === "N").length;
+    const holidayCount = row.slots.filter((slot) => slot === "U").length;
     const totalHours = (dayCount + nightCount) * shiftHours;
+    const overtimeHours = Math.max(0, totalHours - maxHours);
     const warnings = [];
     if (totalHours === 0) {
       warnings.push("Brak przydzielonych zmian.");
@@ -816,6 +898,8 @@ function computeSummaryFromSchedule(schedule, workers) {
       nightsAssigned: nightCount,
       dayCount,
       nightCount,
+      holidayCount,
+      overtimeHours,
       warnings,
     };
   });

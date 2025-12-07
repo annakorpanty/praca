@@ -10,7 +10,6 @@
     <header class="page-header">
       <div>
         <h1>Grafik recepcji</h1>
-        <p>Dodaj recepcjonistów, ustaw miesiąc i wygeneruj dyżury.</p>
       </div>
       <div class="generator-controls">
         <div class="form-control">
@@ -28,7 +27,7 @@
     <main>
       <section class="panel schedule-panel">
         <header class="schedule-header">
-          <h2>Grafik</h2>
+          <h2>Grafik <span id="schedule-period" class="schedule-period"></span></h2>
           <button type="button" class="ghost-btn small" id="open-worker-modal">Zarządzaj kadrą</button>
         </header>
         <div id="schedule-output" class="schedule-output empty-state">
@@ -54,7 +53,6 @@
           <p data-worker-details></p>
           <div class="tag-grid">
             <span class="tag" data-worker-preference></span>
-            <span class="tag" data-worker-weekend></span>
           </div>
         </div>
         <div class="worker-row__actions">
@@ -76,82 +74,113 @@
           </button>
         </header>
         <section class="modal-body">
-          <form id="worker-form" class="worker-form">
-            <div class="form-group">
-              <label for="worker-name">Imię i nazwisko</label>
-              <input
-                id="worker-name"
-                name="worker-name"
-                type="text"
-                required
-                placeholder="np. Lea"
-              />
-            </div>
-            <div class="form-group">
-              <label for="worker-max-hours">Maks. godziny / miesiąc</label>
-              <input
-                id="worker-max-hours"
-                name="worker-max-hours"
-                type="number"
-                min="12"
-                step="6"
-                value="168"
-                required
-              />
-            </div>
-            <div class="form-group inline">
-              <div>
-                <label for="worker-shift-hours">Długość zmiany (godz.)</label>
+          <div class="modal-columns">
+            <form id="worker-form" class="worker-form">
+              <div class="form-group">
+                <label for="worker-name">Imię i nazwisko</label>
                 <input
-                  id="worker-shift-hours"
-                  name="worker-shift-hours"
-                  type="number"
-                  min="4"
-                  max="24"
-                  step="1"
-                  value="12"
+                  id="worker-name"
+                  name="worker-name"
+                  type="text"
+                  required
+                  placeholder="np. Lea"
                 />
               </div>
-              <div>
-                <label for="worker-preference">Preferencje zmian</label>
-                <select id="worker-preference" name="worker-preference">
-                  <option value="balanced">Bez preferencji</option>
-                  <option value="prefer-days">Woli dni</option>
-                  <option value="prefer-nights">Woli noce</option>
-                  <option value="only-days">Tylko dni</option>
-                  <option value="only-nights">Tylko noce</option>
-                </select>
+              <div class="form-group">
+                <label for="worker-max-hours">Maks. godziny / miesiąc</label>
+                <input
+                  id="worker-max-hours"
+                  name="worker-max-hours"
+                  type="number"
+                  min="12"
+                  step="6"
+                  value="168"
+                  required
+                />
               </div>
-            </div>
+              <div class="form-group inline">
+                <div>
+                  <label for="worker-shift-hours">Długość zmiany (godz.)</label>
+                  <input
+                    id="worker-shift-hours"
+                    name="worker-shift-hours"
+                    type="number"
+                    min="4"
+                    max="24"
+                    step="1"
+                    value="12"
+                  />
+                </div>
+                <div>
+                  <label for="worker-preference">Preferencje zmian</label>
+                  <select id="worker-preference" name="worker-preference">
+                    <option value="balanced">Bez preferencji</option>
+                    <option value="prefer-days">Woli dni</option>
+                    <option value="prefer-nights">Woli noce</option>
+                    <option value="only-days">Tylko dni</option>
+                    <option value="only-nights">Tylko noce</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Nie pracuje w dni</label>
+                <div class="weekday-checkboxes" id="worker-block-weekdays">
+                  <label class="checkbox">
+                    <input type="checkbox" value="1" />
+                    <span>Poniedziałek</span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" value="2" />
+                    <span>Wtorek</span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" value="3" />
+                    <span>Środa</span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" value="4" />
+                    <span>Czwartek</span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" value="5" />
+                    <span>Piątek</span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" value="6" />
+                    <span>Sobota</span>
+                  </label>
+                  <label class="checkbox">
+                    <input type="checkbox" value="0" />
+                    <span>Niedziela</span>
+                  </label>
+                </div>
+              </div>
             <div class="form-checkboxes">
-              <label class="checkbox">
-                <input id="worker-no-weekends" name="worker-no-weekends" type="checkbox" />
-                <span>Nie pracuje w weekendy</span>
-              </label>
               <label class="checkbox">
                 <input id="worker-limit-hours" name="worker-limit-hours" type="checkbox" />
                 <span>Nie przekraczaj limitu godzin</span>
               </label>
             </div>
-            <div class="form-actions">
-              <button type="submit" id="worker-submit-btn" class="add-worker-btn">
-                Dodaj recepcjonistę
-              </button>
-              <button
-                type="button"
-                id="cancel-edit-btn"
-                class="ghost-btn"
-                hidden
-              >
-                Anuluj edycję
-              </button>
+              <div class="form-actions">
+                <button type="submit" id="worker-submit-btn" class="add-worker-btn">
+                  Dodaj recepcjonistę
+                </button>
+                <button
+                  type="button"
+                  id="cancel-edit-btn"
+                  class="ghost-btn"
+                  hidden
+                >
+                  Anuluj edycję
+                </button>
+              </div>
+            </form>
+            <div class="modal-worker-list">
+              <h3>Lista recepcjonistów</h3>
+              <ul id="worker-list" class="worker-list"></ul>
             </div>
-          </form>
+          </div>
         </section>
-        <footer class="modal-footer">
-          <h3>Lista recepcjonistów</h3>
-          <ul id="worker-list" class="worker-list"></ul>
-        </footer>
       </div>
     </dialog>
 
