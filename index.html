@@ -28,7 +28,19 @@
       <section class="panel schedule-panel">
         <header class="schedule-header">
           <h2>Grafik <span id="schedule-period" class="schedule-period"></span></h2>
-          <button type="button" class="ghost-btn small" id="open-worker-modal">Zarządzaj kadrą</button>
+          <div class="schedule-actions">
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="open-worker-modal">Zarządzaj kadrą</button>
+            </div>
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="export-btn">Zapisz PNG</button>
+            </div>
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="export-json-btn">Eksport JSON</button>
+              <label class="ghost-btn small file-btn" for="import-json-input">Import JSON</label>
+              <input type="file" id="import-json-input" accept="application/json" hidden />
+            </div>
+          </div>
         </header>
         <div id="schedule-output" class="schedule-output empty-state">
           <p>Dodaj recepcjonistów i kliknij „Generuj grafik”.</p>

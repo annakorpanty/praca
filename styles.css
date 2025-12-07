@@ -174,16 +174,25 @@ main {
 }
 
 .ghost-btn {
-  border: 1px dashed #b4c2f0;
-  padding: 0.55rem 1.1rem;
-  border-radius: 10px;
+  border: 1px solid #d7ddeb;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
   background: transparent;
   color: #4b5ca7;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 .ghost-btn.small {
   padding: 0.3rem 0.7rem;
   font-size: 0.85rem;
+}
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 .ghost-btn[hidden] {
   display: none;
@@ -266,6 +275,22 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.schedule-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.action-group {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.action-group + .action-group {
+  padding-left: 0.6rem;
+  border-left: 1px solid #e2e8f0;
 }
 
 .schedule-period {

@@ -5,6 +5,9 @@ const workerSubmitButton = document.querySelector("#worker-submit-btn");
 const cancelEditButton = document.querySelector("#cancel-edit-btn");
 const workerListElement = document.querySelector("#worker-list");
 const generateButton = document.querySelector("#generate-btn");
+const exportButton = document.querySelector("#export-btn");
+const exportJsonButton = document.querySelector("#export-json-btn");
+const importJsonInput = document.querySelector("#import-json-input");
 const scheduleOutput = document.querySelector("#schedule-output");
 const schedulePeriod = document.querySelector("#schedule-period");
 const warningsList = document.querySelector("#warnings-list");
@@ -153,6 +156,37 @@ monthSelect.addEventListener("change", () => {
 yearSelect.addEventListener("change", () => {
   updateSchedulePeriodText(Number(monthSelect.value), Number(yearSelect.value));
 });
+
+if (exportButton) {
+  exportButton.addEventListener("click", () => {
+    exportScheduleToPng();
+  });
+}
+
+if (exportJsonButton) {
+  exportJsonButton.addEventListener("click", () => {
+    exportScheduleToJson();
+  });
+}
+
+if (importJsonInput) {
+  importJsonInput.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      importScheduleFromJson(data);
+    } catch (error) {
+      alert("Nie udało się wczytać pliku JSON.");
+      console.error(error);
+    } finally {
+      importJsonInput.value = "";
+    }
+  });
+}
 
 function initSelectors() {
   const now = new Date();
@@ -721,6 +755,8 @@ function buildSchedule(workers, month, year, lockedRows = []) {
     });
   });
 
+  const forcedWarnings = [];
+
   dayMetadata.forEach((meta) => {
     assignShift("day", meta);
     assignShift("night", meta);
@@ -758,43 +794,57 @@ function buildSchedule(workers, month, year, lockedRows = []) {
     })),
     rows,
     summary,
-    warnings: [],
+    warnings: forcedWarnings,
   };
 
   function assignShift(kind, meta) {
-    const respectingCap = pickCandidate(kind, meta, true);
+    const respectingCap = pickCandidate(kind, meta, true, false);
     const candidate =
       respectingCap !== null && respectingCap !== undefined
         ? respectingCap
-        : pickCandidate(kind, meta, false);
-    if (!candidate) {
+        : pickCandidate(kind, meta, false, false);
+    let chosen = candidate;
+    let forced = false;
+    if (!chosen) {
+      const forcedCandidate = pickCandidate(kind, meta, false, true);
+      if (forcedCandidate) {
+        chosen = forcedCandidate;
+        forced = true;
+      }
+    }
+    if (!chosen) {
       return;
     }
     const symbol = kind === "day" ? "D" : "N";
-    candidate.slots[meta.index] = symbol;
-    candidate.totalHours += candidate.worker.shiftHours;
+    chosen.slots[meta.index] = symbol;
+    chosen.totalHours += chosen.worker.shiftHours;
     if (kind === "night") {
-      candidate.nightsAssigned += 1;
-      candidate.nightAssignments += 1;
+      chosen.nightsAssigned += 1;
+      chosen.nightAssignments += 1;
     }
     if (kind === "day") {
-      candidate.dayAssignments += 1;
+      chosen.dayAssignments += 1;
     }
-    updateBlockState(candidate, symbol, meta.index);
-    candidate.lastAssignedIndex = meta.index;
+    if (forced) {
+      forcedWarnings.push(
+        `${formatDate(meta.date)} przypisano ${chosen.worker.name} pomimo blokady dnia.`,
+      );
+    }
+    updateBlockState(chosen, symbol, meta.index);
+    chosen.lastAssignedIndex = meta.index;
   }
 
-  function pickCandidate(kind, meta, respectCap) {
+  function pickCandidate(kind, meta, respectCap, allowBlocked) {
     const candidates = workers
       .map((worker) => assignmentMap.get(worker.id))
-      .filter((entry) => isAvailable(entry, kind, meta, respectCap));
+      .filter((entry) => isAvailable(entry, kind, meta, respectCap, allowBlocked));
     candidates.sort(
       (a, b) => computeScore(a, kind, meta) - computeScore(b, kind, meta),
     );
     return candidates.length > 0 ? candidates[0] : null;
   }
 
-  function isAvailable(entry, kind, meta, respectCap) {
+  function isAvailable(entry, kind, meta, respectCap, allowBlocked) {
     if (!entry) {
       return false;
     }
@@ -828,7 +878,8 @@ function buildSchedule(workers, month, year, lockedRows = []) {
     }
     if (
       Array.isArray(worker.blockedWeekdays) &&
-      worker.blockedWeekdays.includes(meta.date.getDay())
+      worker.blockedWeekdays.includes(meta.date.getDay()) &&
+      !allowBlocked
     ) {
       return false;
     }
@@ -930,7 +981,12 @@ function deriveScheduleInsights(schedule, month, year, workers) {
     coverage,
     nightToDay,
     summary,
-    warnings: [...coverage.warnings, ...nightToDay.warnings, ...summaryWarnings],
+    warnings: [
+      ...(schedule?.warnings || []),
+      ...coverage.warnings,
+      ...nightToDay.warnings,
+      ...summaryWarnings,
+    ],
   };
 }
 
@@ -995,6 +1051,287 @@ function computeNightToDayWarnings(schedule, month, year) {
   });
 
   return { cells, warnings };
+}
+
+function exportScheduleToPng() {
+  if (!appState.currentSchedule) {
+    alert("Brak grafiku do eksportu.");
+    return;
+  }
+  const { schedule, month, year } = appState.currentSchedule;
+  const summary = computeSummaryFromSchedule(schedule, appState.workers);
+
+  const padding = 20;
+  const nameColWidth = 200;
+  const cellWidth = 50;
+  const rowHeight = 26;
+  const headerHeight = 36;
+  const summaryRowHeight = 24;
+  const summaryHeaderHeight = 28;
+  const gapAfterTable = 18;
+  const titleHeight = 30;
+
+  const tableWidth = nameColWidth + schedule.days.length * cellWidth;
+  const tableHeight = headerHeight + schedule.rows.length * rowHeight;
+  const summaryHeight =
+    (summary.length > 0 ? summaryHeaderHeight + summary.length * summaryRowHeight : 0);
+
+  const canvasWidth = padding * 2 + tableWidth;
+  const canvasHeight = padding * 2 + titleHeight + tableHeight + gapAfterTable + summaryHeight;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  ctx.fillStyle = "#0b1425";
+  ctx.font = "600 18px Arial, sans-serif";
+  ctx.fillText(`Grafik ${MONTHS[month - 1]} ${year}`, padding, padding + titleHeight - 8);
+
+  const tableStartY = padding + titleHeight;
+  const tableStartX = padding;
+
+  // Header
+  ctx.font = "700 12px Arial, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#f5f7ff";
+  ctx.fillRect(tableStartX, tableStartY, nameColWidth, headerHeight);
+  ctx.strokeStyle = "#e8ecfb";
+  ctx.strokeRect(tableStartX, tableStartY, nameColWidth, headerHeight);
+  ctx.fillStyle = "#0b1425";
+  ctx.fillText("Pracownik", tableStartX + 10, tableStartY + headerHeight / 2);
+
+  schedule.days.forEach((day, index) => {
+    const x = tableStartX + nameColWidth + index * cellWidth;
+    ctx.fillStyle = day.isSunday ? "#ffe0e5" : day.isSaturday ? "#d4f1df" : "#f5f7ff";
+    ctx.fillRect(x, tableStartY, cellWidth, headerHeight);
+    ctx.strokeStyle = "#e8ecfb";
+    ctx.strokeRect(x, tableStartY, cellWidth, headerHeight);
+    ctx.fillStyle = "#475569";
+    ctx.font = "600 11px Arial, sans-serif";
+    ctx.fillText(day.dow, x + 6, tableStartY + 12);
+    ctx.font = "700 12px Arial, sans-serif";
+    ctx.fillStyle = "#0b1425";
+    ctx.fillText(String(day.day), x + 6, tableStartY + headerHeight - 10);
+  });
+
+  // Body
+  const symbolColor = {
+    D: "#0c6b2c",
+    N: "#673ab7",
+    U: "#0f4c81",
+  };
+  ctx.font = "600 12px Arial, sans-serif";
+  schedule.rows.forEach((row, rowIndex) => {
+    const y = tableStartY + headerHeight + rowIndex * rowHeight;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(tableStartX, y, nameColWidth, rowHeight);
+    ctx.strokeStyle = "#e8ecfb";
+    ctx.strokeRect(tableStartX, y, nameColWidth, rowHeight);
+    ctx.fillStyle = "#0b1425";
+    ctx.fillText(row.name, tableStartX + 10, y + rowHeight / 2);
+
+    row.slots.forEach((slot, index) => {
+      const x = tableStartX + nameColWidth + index * cellWidth;
+      ctx.fillStyle =
+        schedule.days[index].isSunday && !slot
+          ? "#fff3f5"
+          : schedule.days[index].isSaturday && !slot
+            ? "#f2fbf6"
+            : "#ffffff";
+      ctx.fillRect(x, y, cellWidth, rowHeight);
+      ctx.strokeStyle = "#e8ecfb";
+      ctx.strokeRect(x, y, cellWidth, rowHeight);
+      if (slot) {
+        ctx.fillStyle = symbolColor[slot] || "#0b1425";
+        ctx.fillText(slot, x + cellWidth / 2 - 4, y + rowHeight / 2);
+      }
+    });
+  });
+
+  if (summary.length > 0) {
+    const summaryStartY = tableStartY + tableHeight + gapAfterTable;
+    const colWidths = [180, 80, 60, 60, 80];
+    const headers = ["Pracownik", "Godziny", "Dzień", "Noc", "Urlop"];
+    const summaryTableWidth = colWidths.reduce((acc, val) => acc + val, 0);
+
+    let xCursor = padding;
+    headers.forEach((label, i) => {
+      const width = colWidths[i];
+      ctx.fillStyle = "#f5f7ff";
+      ctx.fillRect(xCursor, summaryStartY, width, summaryHeaderHeight);
+      ctx.strokeStyle = "#e8ecfb";
+      ctx.strokeRect(xCursor, summaryStartY, width, summaryHeaderHeight);
+      ctx.fillStyle = "#0b1425";
+      ctx.font = "700 12px Arial, sans-serif";
+      ctx.fillText(label, xCursor + 8, summaryStartY + summaryHeaderHeight / 2);
+      xCursor += width;
+    });
+
+    summary.forEach((item, idx) => {
+      const rowY = summaryStartY + summaryHeaderHeight + idx * summaryRowHeight;
+      xCursor = padding;
+      const values = [
+        item.name,
+        `${item.totalHours}h`,
+        String(item.dayCount),
+        String(item.nightCount),
+        String(item.holidayCount ?? 0),
+      ];
+      values.forEach((val, i) => {
+        const width = colWidths[i];
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(xCursor, rowY, width, summaryRowHeight);
+        ctx.strokeStyle = "#e8ecfb";
+        ctx.strokeRect(xCursor, rowY, width, summaryRowHeight);
+        ctx.fillStyle = "#0b1425";
+        ctx.font = "600 12px Arial, sans-serif";
+        ctx.fillText(val, xCursor + 8, rowY + summaryRowHeight / 2);
+        xCursor += width;
+      });
+    });
+  }
+
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const monthLabel = MONTHS[month - 1] || "grafik";
+    link.download = `grafik-${monthLabel}-${year}.png`;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function exportScheduleToJson() {
+  if (!appState.currentSchedule) {
+    alert("Brak grafiku do eksportu.");
+    return;
+  }
+  const payload = {
+    version: "1.0.0",
+    exportedAt: new Date().toISOString(),
+    month: appState.currentSchedule.month,
+    year: appState.currentSchedule.year,
+    workers: appState.workers,
+    schedule: appState.currentSchedule.schedule,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const monthLabel = MONTHS[appState.currentSchedule.month - 1] || "grafik";
+  link.download = `grafik-${monthLabel}-${appState.currentSchedule.year}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function importScheduleFromJson(data) {
+  try {
+    if (!data || typeof data !== "object") {
+      throw new Error("Struktura JSON jest nieprawidłowa.");
+    }
+    const { workers, schedule, month, year } = data;
+    if (!Array.isArray(workers) || !schedule) {
+      throw new Error("Brakuje wymaganych pól (workers/schedule).");
+    }
+    const targetMonth = Number(month) || Number(monthSelect.value) || new Date().getMonth() + 1;
+    const targetYear = Number(year) || Number(yearSelect.value) || new Date().getFullYear();
+    const normalizedWorkers = normalizeImportedWorkers(workers);
+    const normalizedSchedule = normalizeImportedSchedule(schedule, targetMonth, targetYear);
+
+    appState.workers = normalizedWorkers;
+    persistWorkers();
+    renderWorkers();
+
+    monthSelect.value = String(targetMonth);
+    yearSelect.value = String(targetYear);
+
+    appState.currentSchedule = {
+      schedule: normalizedSchedule,
+      month: targetMonth,
+      year: targetYear,
+    };
+    renderAppSchedule();
+  } catch (error) {
+    alert("Nie udało się wczytać pliku JSON.");
+    console.error(error);
+  }
+}
+
+function normalizeImportedWorkers(list) {
+  return list
+    .filter((item) => item && typeof item.id === "string" && typeof item.name === "string")
+    .map((item, index) => ({
+      id: item.id,
+      order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+      name: item.name,
+      maxHours: sanitizeNumber(item.maxHours, DEFAULT_FORM_NUMBERS.maxHours, { min: 12 }),
+      shiftHours: sanitizeNumber(item.shiftHours, DEFAULT_FORM_NUMBERS.shiftHours, { min: 4 }),
+      preference:
+        typeof item.preference === "string" ? item.preference : DEFAULT_FORM_VALUES.preference,
+      enforceHourCap: Boolean(item.enforceHourCap),
+      blockedWeekdays: Array.isArray(item.blockedWeekdays)
+        ? item.blockedWeekdays
+            .map((val) => Number(val))
+            .filter((num) => Number.isFinite(num) && num >= 0 && num <= 6)
+        : [],
+    }))
+    .sort((a, b) => a.order - b.order);
+}
+
+function normalizeImportedSchedule(rawSchedule, month, year) {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, idx) => {
+    const dayNum = (rawSchedule.days?.[idx]?.day ?? idx + 1);
+    const date = new Date(year, month - 1, dayNum);
+    const dowIndex = date.getDay();
+    return {
+      day: dayNum,
+      dow: DAY_NAMES[dowIndex],
+      date,
+      isSaturday: dowIndex === 6,
+      isSunday: dowIndex === 0,
+    };
+  });
+
+  const rows = Array.isArray(rawSchedule.rows)
+    ? rawSchedule.rows
+        .filter((row) => row && typeof row.id === "string" && typeof row.name === "string")
+        .map((row) => {
+          const slots = Array.isArray(row.slots) ? row.slots.slice(0, daysInMonth) : [];
+          const locks = Array.isArray(row.locks) ? row.locks.slice(0, daysInMonth) : [];
+          const normalizedSlots = Array.from({ length: daysInMonth }, (_, idx) => {
+            const value = slots[idx];
+            return value === "D" || value === "N" || value === "U" ? value : null;
+          });
+          const normalizedLocks = Array.from({ length: daysInMonth }, (_, idx) =>
+            Boolean(locks[idx]),
+          );
+          return {
+            id: row.id,
+            name: row.name,
+            slots: normalizedSlots,
+            locks: normalizedLocks,
+          };
+        })
+    : [];
+
+  return {
+    days,
+    rows,
+    summary: [],
+    warnings: [],
+  };
 }
 
 function computeSummaryFromSchedule(schedule, workers) {
