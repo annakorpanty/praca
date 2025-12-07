@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grafik recepcji hotelowej</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <h1>Grafik recepcji</h1>
+        <p>Dodaj recepcjonistów, ustaw miesiąc i wygeneruj dyżury.</p>
+      </div>
+      <div class="generator-controls">
+        <div class="form-control">
+          <label for="month-select">Miesiąc</label>
+          <select id="month-select"></select>
+        </div>
+        <div class="form-control">
+          <label for="year-select">Rok</label>
+          <select id="year-select"></select>
+        </div>
+        <button id="generate-btn" type="button">Generuj grafik</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel schedule-panel">
+        <header class="schedule-header">
+          <h2>Grafik</h2>
+          <button type="button" class="ghost-btn small" id="open-worker-modal">Zarządzaj kadrą</button>
+        </header>
+        <div id="schedule-output" class="schedule-output empty-state">
+          <p>Dodaj recepcjonistów i kliknij „Generuj grafik”.</p>
+        </div>
+        <section class="summary-sections">
+          <div id="warnings-section" class="panel-block" hidden>
+            <h3>Ostrzeżenia</h3>
+            <ul id="warnings-list"></ul>
+          </div>
+          <div class="panel-block">
+            <h3>Podsumowania</h3>
+            <div id="summary-cards" class="summary-cards"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="worker-row-template">
+      <li class="worker-row">
+        <div class="worker-row__info">
+          <h3 data-worker-name></h3>
+          <p data-worker-details></p>
+          <div class="tag-grid">
+            <span class="tag" data-worker-preference></span>
+            <span class="tag" data-worker-weekend></span>
+          </div>
+        </div>
+        <div class="worker-row__actions">
+          <button type="button" class="edit-btn">Edytuj</button>
+          <button type="button" class="delete-btn">Usuń</button>
+        </div>
+      </li>
+    </template>
+
+    <dialog id="worker-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <div>
+            <p class="modal-eyebrow">Recepcjoniści</p>
+            <h2 id="modal-title">Dodaj osobę</h2>
+          </div>
+          <button type="button" class="close-btn" id="close-worker-modal" aria-label="Zamknij">
+            ×
+          </button>
+        </header>
+        <section class="modal-body">
+          <form id="worker-form" class="worker-form">
+            <div class="form-group">
+              <label for="worker-name">Imię i nazwisko</label>
+              <input
+                id="worker-name"
+                name="worker-name"
+                type="text"
+                required
+                placeholder="np. Lea"
+              />
+            </div>
+            <div class="form-group">
+              <label for="worker-max-hours">Maks. godziny / miesiąc</label>
+              <input
+                id="worker-max-hours"
+                name="worker-max-hours"
+                type="number"
+                min="12"
+                step="6"
+                value="168"
+                required
+              />
+            </div>
+            <div class="form-group inline">
+              <div>
+                <label for="worker-shift-hours">Długość zmiany (godz.)</label>
+                <input
+                  id="worker-shift-hours"
+                  name="worker-shift-hours"
+                  type="number"
+                  min="4"
+                  max="24"
+                  step="1"
+                  value="12"
+                />
+              </div>
+              <div>
+                <label for="worker-preference">Preferencje zmian</label>
+                <select id="worker-preference" name="worker-preference">
+                  <option value="balanced">Bez preferencji</option>
+                  <option value="prefer-days">Woli dni</option>
+                  <option value="prefer-nights">Woli noce</option>
+                  <option value="only-days">Tylko dni</option>
+                  <option value="only-nights">Tylko noce</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-checkboxes">
+              <label class="checkbox">
+                <input id="worker-no-weekends" name="worker-no-weekends" type="checkbox" />
+                <span>Nie pracuje w weekendy</span>
+              </label>
+              <label class="checkbox">
+                <input id="worker-limit-hours" name="worker-limit-hours" type="checkbox" />
+                <span>Nie przekraczaj limitu godzin</span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="worker-submit-btn" class="add-worker-btn">
+                Dodaj recepcjonistę
+              </button>
+              <button
+                type="button"
+                id="cancel-edit-btn"
+                class="ghost-btn"
+                hidden
+              >
+                Anuluj edycję
+              </button>
+            </div>
+          </form>
+        </section>
+        <footer class="modal-footer">
+          <h3>Lista recepcjonistów</h3>
+          <ul id="worker-list" class="worker-list"></ul>
+        </footer>
+      </div>
+    </dialog>
+
+    <script src="main.js"></script>
+  </body>
+</html>
