@@ -231,7 +231,13 @@ function renderSchedule(schedule, highlightedDayIndexes = []) {
 
   schedule.days.forEach((day, index) => {
     const th = document.createElement("th");
-    th.innerHTML = `<div>${day.day}<span style="display:block;font-size:0.7rem;color:#64748b;margin-top:0.15rem;">${day.dow}</span></div>`;
+    th.innerHTML = `<div><span class="day-name">${day.dow}</span><span class="day-number">${day.day}</span></div>`;
+    if (day.isSaturday) {
+      th.classList.add("day-saturday-header");
+    }
+    if (day.isSunday) {
+      th.classList.add("day-sunday-header");
+    }
     if (highlightedSet.has(index)) {
       th.classList.add("day-warning");
     }
@@ -248,6 +254,13 @@ function renderSchedule(schedule, highlightedDayIndexes = []) {
     tr.append(th);
     row.slots.forEach((slot, index) => {
       const td = document.createElement("td");
+      const dayMeta = schedule.days[index];
+      if (dayMeta?.isSaturday) {
+        td.classList.add("day-saturday");
+      }
+      if (dayMeta?.isSunday) {
+        td.classList.add("day-sunday");
+      }
       if (highlightedSet.has(index)) {
         td.classList.add("day-warning");
       }
@@ -257,6 +270,7 @@ function renderSchedule(schedule, highlightedDayIndexes = []) {
         { value: "", label: "–" },
         { value: "D", label: "D" },
         { value: "N", label: "N" },
+        { value: "U", label: "U" },
       ].forEach((optionDef) => {
         const option = document.createElement("option");
         option.value = optionDef.value;
@@ -284,6 +298,8 @@ function applySlotClasses(cell, value) {
     cell.classList.add("shift-day");
   } else if (value === "N") {
     cell.classList.add("shift-night");
+  } else if (value === "U") {
+    cell.classList.add("shift-holiday");
   } else {
     cell.classList.add("shift-off");
   }
@@ -298,7 +314,7 @@ function updateSlotValue(rowId, dayIndex, value) {
   if (!row || !Array.isArray(row.slots) || dayIndex < 0 || dayIndex >= row.slots.length) {
     return;
   }
-  row.slots[dayIndex] = value === "D" || value === "N" ? value : null;
+  row.slots[dayIndex] = value === "D" || value === "N" || value === "U" ? value : null;
   renderAppSchedule();
 }
 
@@ -583,7 +599,13 @@ function buildSchedule(workers, month, year) {
   });
 
   return {
-    days: dayMetadata.map(({ day, dow, date }) => ({ day, dow, date })),
+    days: dayMetadata.map(({ day, dow, date }) => ({
+      day,
+      dow,
+      date,
+      isSaturday: date.getDay() === 6,
+      isSunday: date.getDay() === 0,
+    })),
     rows,
     summary,
     warnings: [],
