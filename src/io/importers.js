@@ -60,11 +60,7 @@ export function normalizeImportedWorkers(list) {
       preference:
         typeof item.preference === "string" ? item.preference : DEFAULT_FORM_VALUES.preference,
       enforceHourCap: Boolean(item.enforceHourCap),
-      blockedWeekdays: Array.isArray(item.blockedWeekdays)
-        ? item.blockedWeekdays
-            .map((val) => Number(val))
-            .filter((num) => Number.isFinite(num) && num >= 0 && num <= 6)
-        : [],
+      blockedShifts: normalizeBlockedShifts(item.blockedShifts),
       noWeekends: false,
     }))
     .sort((a, b) => a.order - b.order);
@@ -120,4 +116,22 @@ export function normalizeImportedSchedule(rawSchedule, month, year) {
     summary: [],
     warnings: [],
   };
+}
+
+function normalizeBlockedShifts(raw) {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  const map = {};
+  Object.entries(raw).forEach(([key, value]) => {
+    const day = Number(key);
+    if (!Number.isFinite(day)) {
+      return;
+    }
+    const shifts = Array.isArray(value) ? value.filter((v) => v === "D" || v === "N") : [];
+    if (shifts.length) {
+      map[day] = shifts;
+    }
+  });
+  return map;
 }

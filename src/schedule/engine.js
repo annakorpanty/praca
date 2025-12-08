@@ -154,8 +154,9 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
       chosen.dayAssignments += 1;
     }
     if (forced) {
+      const label = kind === "day" ? "D" : "N";
       forcedWarnings.push(
-        `${formatDate(meta.date)} przypisano ${chosen.worker.name} pomimo blokady dnia.`,
+        `${formatDate(meta.date)} przydzielono zmianę ${label} dla ${chosen.worker.name} pomimo blokady.`,
       );
     }
     updateBlockState(chosen, symbol, meta.index, settings);
@@ -204,11 +205,8 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
     if (kind === "night" && worker.preference === "only-days") {
       return false;
     }
-    if (
-      Array.isArray(worker.blockedWeekdays) &&
-      worker.blockedWeekdays.includes(meta.date.getDay()) &&
-      !allowBlocked
-    ) {
+    const isBlockedShift = isShiftBlocked(worker, kind, meta.date.getDay());
+    if (isBlockedShift && !allowBlocked) {
       return false;
     }
     const wouldExceed = totalHours + worker.shiftHours > worker.maxHours;
@@ -360,4 +358,14 @@ export function countConsecutiveShifts(slots, index, symbol) {
 function exceedsConsecutiveLimit(slots, index, symbol, settings) {
   const limit = Math.max(getMaxStreakLimit(symbol, settings), 1);
   return countConsecutiveShifts(slots, index, symbol) >= limit;
+}
+
+function isShiftBlocked(worker, kind, dow) {
+  const blocked = worker?.blockedShifts || {};
+  const shifts = blocked[dow];
+  if (!Array.isArray(shifts) || shifts.length === 0) {
+    return false;
+  }
+  const symbol = kind === "day" ? "D" : "N";
+  return shifts.includes(symbol);
 }

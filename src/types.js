@@ -11,7 +11,7 @@
  * @property {number} shiftHours
  * @property {Preference} preference
  * @property {boolean} enforceHourCap
- * @property {number[]} blockedWeekdays
+ * @property {Record<number, Array<"D" | "N">>} blockedShifts
  * @property {boolean} [noWeekends]
  */
 

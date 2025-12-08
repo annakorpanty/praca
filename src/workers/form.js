@@ -1,5 +1,5 @@
 import { BUTTON_LABELS, DEFAULT_FORM_NUMBERS, DEFAULT_FORM_VALUES } from "../constants/defaults.js";
-import { getCheckboxValues, setCheckboxValues } from "../utils/forms.js";
+import { getBlockedShifts, setBlockedShifts } from "../utils/forms.js";
 import { sanitizeNumber } from "../utils/numbers.js";
 
 /**
@@ -11,7 +11,7 @@ import { sanitizeNumber } from "../utils/numbers.js";
 export function extractWorkerPayload(formData, workerForm) {
   const rawName = formData.get("worker-name");
   const name = rawName ? String(rawName).trim() : "";
-  const blockedWeekdays = getCheckboxValues(workerForm.querySelector("#worker-block-weekdays"));
+  const blockedShifts = getBlockedShifts(workerForm.querySelector("#worker-block-shifts"));
   return {
     name,
     maxHours: sanitizeNumber(
@@ -27,7 +27,7 @@ export function extractWorkerPayload(formData, workerForm) {
     preference: formData.get("worker-preference") || DEFAULT_FORM_VALUES.preference,
     noWeekends: false,
     enforceHourCap: formData.get("worker-limit-hours") === "on",
-    blockedWeekdays,
+    blockedShifts,
   };
 }
 
@@ -40,7 +40,7 @@ export function extractWorkerPayload(formData, workerForm) {
  *  workerSubmitButton: HTMLButtonElement;
  *  cancelEditButton: HTMLButtonElement;
  *  workerModalTitle: HTMLElement | null;
- *  workerBlockWeekdays: HTMLElement | null;
+ *  workerBlockShifts: HTMLElement | null;
  * }} ui
  * @param {() => void} onShowModal
  */
@@ -51,7 +51,7 @@ export function startEditingWorker(worker, appState, ui, onShowModal) {
   ui.workerForm.querySelector("#worker-shift-hours").value = String(worker.shiftHours);
   ui.workerForm.querySelector("#worker-preference").value = worker.preference;
   ui.workerForm.querySelector("#worker-limit-hours").checked = Boolean(worker.enforceHourCap);
-  setCheckboxValues(ui.workerBlockWeekdays, worker.blockedWeekdays || []);
+  setBlockedShifts(ui.workerBlockShifts, worker.blockedShifts || {});
   ui.workerSubmitButton.textContent = BUTTON_LABELS.save;
   ui.cancelEditButton.hidden = false;
   if (ui.workerModalTitle) {
@@ -68,7 +68,7 @@ export function startEditingWorker(worker, appState, ui, onShowModal) {
  *  workerSubmitButton: HTMLButtonElement;
  *  cancelEditButton: HTMLButtonElement;
  *  workerModalTitle: HTMLElement | null;
- *  workerBlockWeekdays: HTMLElement | null;
+ *  workerBlockShifts: HTMLElement | null;
  * }} ui
  */
 export function exitEditingMode(appState, ui) {
@@ -86,7 +86,7 @@ export function exitEditingMode(appState, ui) {
  * Applies default values to worker form.
  * @param {{
  *  workerForm: HTMLFormElement;
- *  workerBlockWeekdays: HTMLElement | null;
+ *  workerBlockShifts: HTMLElement | null;
  * }} ui
  */
 export function setDefaultFormValues(ui) {
@@ -94,5 +94,5 @@ export function setDefaultFormValues(ui) {
   ui.workerForm.querySelector("#worker-shift-hours").value = DEFAULT_FORM_VALUES.shiftHours;
   ui.workerForm.querySelector("#worker-preference").value = DEFAULT_FORM_VALUES.preference;
   ui.workerForm.querySelector("#worker-limit-hours").checked = false;
-  setCheckboxValues(ui.workerBlockWeekdays, []);
+  setBlockedShifts(ui.workerBlockShifts, {});
 }

@@ -3,7 +3,7 @@
 Vanilla HTML/CSS/JS app for building monthly reception schedules with worker preferences, streak limits, and import/export. Pure static assets—no build step required.
 
 ## Features
-- Schedule generation with day/night balancing, hour caps, streak limits, preferences, blocked weekdays, and lockable cells.
+- Schedule generation with day/night balancing, hour caps, streak limits, preferences, per-shift weekday blocks, and lockable cells.
 - Inline editing for worker roster and schedule cells; warnings/highlights for coverage gaps, night→day transitions, blocked days, and streak violations.
 - Export to PNG or JSON; import from JSON to restore workers and schedules.
 - Settings for max streaks saved in `localStorage` along with workers and locks.

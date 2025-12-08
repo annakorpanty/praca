@@ -64,7 +64,7 @@ test("buildSchedule respects locked cells", () => {
     shiftHours: 12,
     preference: "balanced",
     enforceHourCap: false,
-    blockedWeekdays: [],
+    blockedShifts: {},
     noWeekends: false,
   };
   const originalRandom = Math.random;
@@ -91,7 +91,7 @@ test("deriveScheduleInsights detects night-to-day transitions", () => {
     shiftHours: 12,
     preference: "balanced",
     enforceHourCap: false,
-    blockedWeekdays: [],
+    blockedShifts: {},
     noWeekends: false,
   };
   const schedule = {
@@ -110,6 +110,33 @@ test("deriveScheduleInsights detects night-to-day transitions", () => {
   assert.ok(insights.warnings.some((text) => text.includes("N→D")));
 });
 
+test("deriveScheduleInsights warns on blocked shifts", () => {
+  const worker = {
+    id: "w1",
+    name: "Alex",
+    order: 0,
+    maxHours: 168,
+    shiftHours: 12,
+    preference: "balanced",
+    enforceHourCap: false,
+    blockedShifts: { 1: ["N"] },
+    noWeekends: false,
+  };
+  const schedule = {
+    days: [
+      { day: 1, dow: "Nd", date: new Date(2025, 0, 1), isSaturday: false, isSunday: true },
+      { day: 6, dow: "Pn", date: new Date(2025, 0, 6), isSaturday: false, isSunday: false },
+    ],
+    rows: [{ id: "w1", name: "Alex", slots: [null, "N"], locks: [false, false] }],
+    summary: [],
+    warnings: [],
+  };
+  const insights = deriveScheduleInsights(schedule, 1, 2025, [worker], {
+    maxStreak: { D: 3, N: 2, ANY: 3 },
+  });
+  assert.ok(insights.warnings.some((text) => text.includes("blokadę na zmianę N")));
+});
+
 test("computeSummaryFromSchedule calculates totals and warnings", () => {
   const workers = [
     {
@@ -120,7 +147,7 @@ test("computeSummaryFromSchedule calculates totals and warnings", () => {
       shiftHours: 12,
       preference: "balanced",
       enforceHourCap: false,
-      blockedWeekdays: [],
+      blockedShifts: {},
       noWeekends: false,
     },
   ];

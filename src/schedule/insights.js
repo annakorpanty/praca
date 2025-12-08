@@ -118,7 +118,7 @@ function computeBlockedDayWarnings(schedule, workers) {
 
   schedule.rows.forEach((row) => {
     const worker = workerMap.get(row.id);
-    if (!worker || !Array.isArray(worker.blockedWeekdays) || worker.blockedWeekdays.length === 0) {
+    if (!worker || !worker.blockedShifts) {
       return;
     }
     row.slots.forEach((slot, index) => {
@@ -130,12 +130,13 @@ function computeBlockedDayWarnings(schedule, workers) {
         return;
       }
       const dowIndex = dayMeta.date ? dayMeta.date.getDay() : DAY_NAMES.indexOf(dayMeta.dow);
-      if (worker.blockedWeekdays.includes(dowIndex)) {
+      const dayBlocked = worker.blockedShifts[dowIndex];
+      if (Array.isArray(dayBlocked) && dayBlocked.includes(slot)) {
         cells.push({ rowId: row.id, dayIndex: index });
         const date =
           dayMeta.date || new Date(dayMeta.year || new Date().getFullYear(), dowIndex, dayMeta.day);
         warnings.push(
-          `${formatDate(date)} ${worker.name} ma blokadę dnia, a przydzielono zmianę ${slot}.`,
+          `${formatDate(date)} ${worker.name} ma blokadę na zmianę ${slot} w ten dzień.`,
         );
       }
     });

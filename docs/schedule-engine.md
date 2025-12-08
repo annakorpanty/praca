@@ -18,7 +18,7 @@
 - `src/io/importers.js` — JSON import + normalization.
 
 ## Data shapes
-- `Worker`: `{ id, name, order, maxHours, shiftHours, preference, enforceHourCap, blockedWeekdays[] }`
+- `Worker`: `{ id, name, order, maxHours, shiftHours, preference, enforceHourCap, blockedShifts }` where `blockedShifts` is a map `{ [weekdayIndex]: ["D","N"] }`.
 - `Settings`: `{ maxStreak: { D, N, ANY } }`
 - `Schedule`: `{ days[], rows[], summary[], warnings[] }`
   - `days`: `{ day, dow, date, isSaturday, isSunday }`
@@ -28,10 +28,10 @@
 ## Scheduling rules (engine)
 - Tries to assign both day and night shifts for each calendar day.
 - Respects locked cells from previous schedule runs.
-- Discards assignments that break: weekend bans, D-after-N, capped hours (hard if `enforceHourCap` or `respectCap` pass), blocked weekdays (unless forced).
+- Discards assignments that break: weekend bans, D-after-N, capped hours (hard if `enforceHourCap` or `respectCap` pass), blocked shifts per weekday (unless forced).
 - Balances load with scoring: penalizes consecutive over-target streaks, rewards idle time recovery, biases by preferences (prefer/only day or night).
 - Limits streaks using settings: `maxStreak.D`, `maxStreak.N`, `maxStreak.ANY` with random block targets inside allowed range.
-- Emits forced warnings when violating blocked weekday due to lack of candidates.
+- Emits forced warnings when violating a blocked shift/day due to lack of candidates.
 
 ## Insights and warnings
 - Coverage: missing day/night per date.

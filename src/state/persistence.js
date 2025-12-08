@@ -80,11 +80,7 @@ export function hydrateWorkersFromStorage(appState) {
             typeof item.preference === "string" ? item.preference : DEFAULT_FORM_VALUES.preference,
           noWeekends: false,
           enforceHourCap: Boolean(item.enforceHourCap),
-          blockedWeekdays: Array.isArray(item.blockedWeekdays)
-            ? item.blockedWeekdays
-                .map((value) => Number(value))
-                .filter((num) => Number.isFinite(num))
-            : [],
+          blockedShifts: normalizeBlockedShifts(item.blockedShifts),
         };
       });
     normalized.sort((a, b) => a.order - b.order);
@@ -107,4 +103,27 @@ export function persistWorkers(appState) {
   } catch {
     // ignore storage failures
   }
+}
+
+/**
+ * Normalizes blocked shifts map.
+ * @param {unknown} raw
+ * @returns {Record<number, Array<"D" | "N">>}
+ */
+function normalizeBlockedShifts(raw) {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  const map = {};
+  Object.entries(raw).forEach(([key, value]) => {
+    const day = Number(key);
+    if (!Number.isFinite(day)) {
+      return;
+    }
+    const shifts = Array.isArray(value) ? value.filter((v) => v === "D" || v === "N") : [];
+    if (shifts.length) {
+      map[day] = shifts;
+    }
+  });
+  return map;
 }

@@ -142,37 +142,81 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>Nie pracuje w dni</label>
-                <div class="weekday-checkboxes" id="worker-block-weekdays">
-                  <label class="checkbox">
-                    <input type="checkbox" value="1" />
-                    <span>Poniedziałek</span>
-                  </label>
-                  <label class="checkbox">
-                    <input type="checkbox" value="2" />
-                    <span>Wtorek</span>
-                  </label>
-                  <label class="checkbox">
-                    <input type="checkbox" value="3" />
-                    <span>Środa</span>
-                  </label>
-                  <label class="checkbox">
-                    <input type="checkbox" value="4" />
-                    <span>Czwartek</span>
-                  </label>
-                  <label class="checkbox">
-                    <input type="checkbox" value="5" />
-                    <span>Piątek</span>
-                  </label>
-                  <label class="checkbox">
-                    <input type="checkbox" value="6" />
-                    <span>Sobota</span>
-                  </label>
-                  <label class="checkbox">
-                    <input type="checkbox" value="0" />
-                    <span>Niedziela</span>
-                  </label>
-                </div>
+                <label>Nie pracuje w (zmiany)</label>
+                <table class="blocked-shifts-table" id="worker-block-shifts">
+                  <thead>
+                    <tr>
+                      <th>Dzień tygodnia</th>
+                      <th>D</th>
+                      <th>N</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Poniedziałek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="1" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="1" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Wtorek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="2" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="2" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Środa</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="3" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="3" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Czwartek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="4" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="4" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Piątek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="5" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="5" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Sobota</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="6" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="6" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Niedziela</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="0" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="0" data-shift="N" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             <div class="form-checkboxes">
               <label class="checkbox">

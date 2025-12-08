@@ -30,5 +30,5 @@ export const elements = {
   settingsMaxStreakNightInput: document.querySelector("#settings-max-streak-night"),
   settingsMaxStreakAnyInput: document.querySelector("#settings-max-streak-any"),
   cancelSettingsButton: document.querySelector("#cancel-settings-btn"),
-  workerBlockWeekdays: document.querySelector("#worker-block-weekdays"),
+  workerBlockShifts: document.querySelector("#worker-block-shifts"),
 };

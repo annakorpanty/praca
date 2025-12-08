@@ -149,6 +149,34 @@ main {
   max-width: 260px;
 }
 
+.blocked-shifts-table {
+  width: 100%;
+  border-collapse: collapse;
+  max-width: 420px;
+  font-weight: 500;
+}
+
+.blocked-shifts-table th,
+.blocked-shifts-table td {
+  border: 1px solid #e8ecfb;
+  padding: 0.4rem 0.5rem;
+}
+
+.blocked-shifts-table th {
+  background: #f7f8ff;
+  color: #0b1425;
+}
+
+.blocked-shifts-table td.center {
+  text-align: center;
+}
+
+.blocked-shifts-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #e11d48;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;

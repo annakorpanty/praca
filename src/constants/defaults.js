@@ -23,5 +23,5 @@ export const DEFAULT_FORM_VALUES = {
   maxHours: String(DEFAULT_FORM_NUMBERS.maxHours),
   shiftHours: String(DEFAULT_FORM_NUMBERS.shiftHours),
   preference: "balanced",
-  blockedWeekdays: [],
+  blockedShifts: {},
 };

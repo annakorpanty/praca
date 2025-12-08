@@ -1,4 +1,4 @@
-import { formatBlockedWeekdays, formatPreference } from "../utils/forms.js";
+import { formatBlockedShifts, formatPreference } from "../utils/forms.js";
 
 /**
  * Renders worker list with edit/delete actions.
@@ -27,11 +27,9 @@ export function renderWorkers(appState, targets, handlers) {
     row.querySelector("[data-worker-details]").textContent = details;
     row.querySelector("[data-worker-preference]").textContent = formatPreference(worker.preference);
     const blockedTags = [];
-    if (Array.isArray(worker.blockedWeekdays) && worker.blockedWeekdays.length) {
-      const names = formatBlockedWeekdays(worker.blockedWeekdays);
-      if (names) {
-        blockedTags.push(`Nie pracuje: ${names}`);
-      }
+    const blockedLabel = formatBlockedShifts(worker.blockedShifts);
+    if (blockedLabel) {
+      blockedTags.push(`Nie pracuje w: ${blockedLabel}`);
     }
     if (blockedTags.length) {
       const tagGrid = row.querySelector(".tag-grid");
