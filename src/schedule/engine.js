@@ -57,12 +57,17 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
       totalHours: 0,
       nightsAssigned: 0,
       lastAssignedIndex: -5,
-      fairnessBias: Math.random(),
       dayAssignments: 0,
       nightAssignments: 0,
       block: { type: null, length: 0, target: 0 },
     });
   });
+
+  const averageShiftHours =
+    workers.length > 0
+      ? workers.reduce((acc, w) => acc + w.shiftHours, 0) / workers.length
+      : DEFAULT_FORM_NUMBERS.shiftHours;
+  const targetHours = (daysInMonth * 2 * averageShiftHours) / Math.max(workers.length, 1);
 
   // Seed totals and counts for locked assignments
   assignmentMap.forEach((entry) => {
@@ -228,6 +233,11 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
   function computeScore(entry, kind, meta) {
     let score = entry.totalHours;
     const { worker, nightsAssigned, slots, dayAssignments, nightAssignments, block } = entry;
+    const loadGap = entry.totalHours - targetHours;
+    score += loadGap * 12;
+    if (loadGap < 0) {
+      score -= Math.min(Math.abs(loadGap), 12);
+    }
     const idleDays = meta.index - entry.lastAssignedIndex;
     if (idleDays > 0) {
       score -= Math.min(idleDays, 5) * 4;
@@ -250,27 +260,27 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
     const balanceGap = dayAssignments - nightAssignments;
     if (kind === "day") {
       score += Math.max(balanceGap, 0) * 12;
-      score += dayAssignments * 1.5;
+      score += dayAssignments * 1;
       if (worker.preference === "prefer-days") {
-        score -= 30;
+        score -= 12;
       } else if (worker.preference === "prefer-nights") {
-        score += 25;
+        score += 10;
       } else if (worker.preference === "only-nights") {
-        score += 110;
+        score += 70;
       } else if (worker.preference === "only-days") {
-        score -= 65;
+        score -= 40;
       }
     } else if (kind === "night") {
       score += Math.max(-balanceGap, 0) * 12;
-      score += nightAssignments * 2;
+      score += nightAssignments * 1.2;
       if (worker.preference === "prefer-nights") {
-        score -= 50;
+        score -= 20;
       } else if (worker.preference === "only-nights") {
-        score -= 90;
+        score -= 60;
       } else if (worker.preference === "prefer-days") {
-        score += 20;
+        score += 10;
       } else if (worker.preference === "only-days") {
-        score += 130;
+        score += 80;
       }
       if (meta.index > 0 && slots[meta.index - 1] === "N") {
         score += 10;
@@ -280,8 +290,6 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
       score += 5;
     }
     score += entry.order * 0.01;
-    score += entry.fairnessBias;
-    score += Math.random();
     return score;
   }
 }

@@ -107,6 +107,36 @@ test("buildSchedule does not double-assign when a shift is locked", () => {
   assert.equal(day1Assignments.filter((s) => s === "N").length, 1);
 });
 
+test("buildSchedule balances hours close to target", () => {
+  const base = {
+    id: "w",
+    name: "Worker",
+    order: 0,
+    maxHours: 168,
+    shiftHours: 12,
+    preference: "balanced",
+    enforceHourCap: false,
+    blockedShifts: {},
+    noWeekends: false,
+  };
+  const workers = [
+    { ...base, id: "w1", name: "A", order: 0 },
+    { ...base, id: "w2", name: "B", order: 1 },
+    { ...base, id: "w3", name: "C", order: 2 },
+  ];
+  const schedule = buildSchedule(workers, 1, 2025, [], {
+    maxStreak: { D: 3, N: 2, ANY: 3 },
+  });
+  const totals = schedule.rows.map((row) => {
+    const worker = workers.find((w) => w.id === row.id);
+    const shiftHours = worker ? worker.shiftHours : 12;
+    return row.slots.filter((s) => s === "D" || s === "N").length * shiftHours;
+  });
+  const max = Math.max(...totals);
+  const min = Math.min(...totals);
+  assert.ok(max - min <= 12);
+});
+
 test("deriveScheduleInsights detects night-to-day transitions", () => {
   const worker = {
     id: "w1",
