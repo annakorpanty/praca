@@ -126,6 +126,13 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
   };
 
   function assignShift(kind, meta) {
+    const symbol = kind === "day" ? "D" : "N";
+    const alreadyAssigned = Array.from(assignmentMap.values()).some(
+      (entry) => entry.slots[meta.index] === symbol,
+    );
+    if (alreadyAssigned) {
+      return;
+    }
     const respectingCap = pickCandidate(kind, meta, true, false);
     const candidate =
       respectingCap !== null && respectingCap !== undefined
@@ -143,7 +150,6 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
     if (!chosen) {
       return;
     }
-    const symbol = kind === "day" ? "D" : "N";
     chosen.slots[meta.index] = symbol;
     chosen.totalHours += chosen.worker.shiftHours;
     if (kind === "night") {

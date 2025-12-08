@@ -82,6 +82,31 @@ test("buildSchedule respects locked cells", () => {
   assert.equal(schedule.days.length, 28);
 });
 
+test("buildSchedule does not double-assign when a shift is locked", () => {
+  const w1 = {
+    id: "w1",
+    name: "Alex",
+    order: 0,
+    maxHours: 168,
+    shiftHours: 12,
+    preference: "balanced",
+    enforceHourCap: false,
+    blockedShifts: {},
+    noWeekends: false,
+  };
+  const w2 = { ...w1, id: "w2", name: "Bea", order: 1 };
+  const lockedRows = [
+    { id: "w1", name: "Alex", slots: [null, "D"], locks: [false, true] },
+    { id: "w2", name: "Bea", slots: [null, null], locks: [false, false] },
+  ];
+  const schedule = buildSchedule([w1, w2], 2, 2025, lockedRows, {
+    maxStreak: { D: 3, N: 2, ANY: 3 },
+  });
+  const day1Assignments = schedule.rows.map((r) => r.slots[1]).filter(Boolean);
+  assert.equal(day1Assignments.filter((s) => s === "D").length, 1);
+  assert.equal(day1Assignments.filter((s) => s === "N").length, 1);
+});
+
 test("deriveScheduleInsights detects night-to-day transitions", () => {
   const worker = {
     id: "w1",
