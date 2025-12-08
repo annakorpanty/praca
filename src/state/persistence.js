@@ -1,0 +1,110 @@
+import { DEFAULT_FORM_NUMBERS, DEFAULT_FORM_VALUES } from "../constants/defaults.js";
+import { STORAGE_KEY, SETTINGS_STORAGE_KEY } from "../constants/storageKeys.js";
+import { sanitizeNumber } from "../utils/numbers.js";
+import { createDefaultSettings } from "./appState.js";
+
+/**
+ * Hydrates settings from localStorage into appState.
+ * @param {import("./appState.js").AppState} appState
+ */
+export function hydrateSettingsFromStorage(appState) {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+    appState.settings = createDefaultSettings();
+    return;
+  }
+  try {
+    const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!stored) {
+      appState.settings = createDefaultSettings();
+      return;
+    }
+    const parsed = JSON.parse(stored);
+    const day = sanitizeNumber(parsed?.maxStreak?.D, appState.settings.maxStreak.D, { min: 1 });
+    const night = sanitizeNumber(parsed?.maxStreak?.N, appState.settings.maxStreak.N, { min: 1 });
+    const any = sanitizeNumber(parsed?.maxStreak?.ANY, appState.settings.maxStreak.ANY, { min: 1 });
+    appState.settings = {
+      maxStreak: {
+        D: day,
+        N: night,
+        ANY: any,
+      },
+    };
+  } catch {
+    appState.settings = createDefaultSettings();
+  }
+}
+
+/**
+ * Persists current settings to localStorage.
+ * @param {import("./appState.js").AppState} appState
+ */
+export function persistSettings(appState) {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(appState.settings));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+/**
+ * Hydrates workers from localStorage into appState.
+ * @param {import("./appState.js").AppState} appState
+ */
+export function hydrateWorkersFromStorage(appState) {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+    return;
+  }
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return;
+    }
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return;
+    }
+    const normalized = parsed
+      .filter((item) => item && typeof item.id === "string")
+      .map((item, index) => {
+        const orderValue = Number(item.order);
+        return {
+          id: item.id,
+          order: Number.isFinite(orderValue) ? orderValue : index,
+          name: typeof item.name === "string" ? item.name : "",
+          maxHours: sanitizeNumber(item.maxHours, DEFAULT_FORM_NUMBERS.maxHours, { min: 12 }),
+          shiftHours: sanitizeNumber(item.shiftHours, DEFAULT_FORM_NUMBERS.shiftHours, { min: 4 }),
+          preference:
+            typeof item.preference === "string" ? item.preference : DEFAULT_FORM_VALUES.preference,
+          noWeekends: false,
+          enforceHourCap: Boolean(item.enforceHourCap),
+          blockedWeekdays: Array.isArray(item.blockedWeekdays)
+            ? item.blockedWeekdays
+                .map((value) => Number(value))
+                .filter((num) => Number.isFinite(num))
+            : [],
+        };
+      });
+    normalized.sort((a, b) => a.order - b.order);
+    appState.workers = normalized;
+  } catch {
+    // ignore storage failures
+  }
+}
+
+/**
+ * Persists workers to localStorage.
+ * @param {import("./appState.js").AppState} appState
+ */
+export function persistWorkers(appState) {
+  if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.workers));
+  } catch {
+    // ignore storage failures
+  }
+}
