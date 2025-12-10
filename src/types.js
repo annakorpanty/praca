@@ -13,11 +13,13 @@
  * @property {boolean} enforceHourCap
  * @property {Record<number, Array<"D" | "N">>} blockedShifts
  * @property {boolean} [noWeekends]
+ * @property {string} color
  */
 
 /**
  * @typedef {Object} Settings
  * @property {{ D: number; N: number; ANY: number }} maxStreak
+ * @property {boolean} [useWorkerColors]
  */
 
 /**
@@ -35,6 +37,7 @@
  * @property {string} name
  * @property {Array<"D" | "N" | "U" | null>} slots
  * @property {boolean[]} locks
+ * @property {string=} color
  */
 
 /**

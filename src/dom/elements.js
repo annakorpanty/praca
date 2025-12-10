@@ -33,4 +33,6 @@ export const elements = {
   workerBlockShifts: document.querySelector("#worker-block-shifts"),
   blockAllButton: document.querySelector("#block-all-btn"),
   unblockAllButton: document.querySelector("#unblock-all-btn"),
+  workerColorInput: document.querySelector("#worker-color"),
+  settingsUseWorkerColors: document.querySelector("#settings-use-worker-colors"),
 };

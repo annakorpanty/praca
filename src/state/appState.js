@@ -13,12 +13,13 @@ import { DEFAULT_MAX_STREAK } from "../constants/defaults.js";
  * @returns {import("../types.js").Settings}
  */
 export function createDefaultSettings() {
-  return {
+ return {
     maxStreak: {
       D: DEFAULT_MAX_STREAK.D,
       N: DEFAULT_MAX_STREAK.N,
       ANY: DEFAULT_MAX_STREAK.ANY,
     },
+    useWorkerColors: false,
   };
 }
 

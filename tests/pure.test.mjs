@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { buildSchedule } from "../src/schedule/engine.js";
 import { deriveScheduleInsights } from "../src/schedule/insights.js";
 import { reorderScheduleRows } from "../src/schedule/reorder.js";
+import { normalizeImportedWorkers } from "../src/io/importers.js";
+import { isHexColor } from "../src/utils/colors.js";
 import { computeSummaryFromSchedule } from "../src/schedule/summary.js";
 import { normalizeImportedSchedule } from "../src/io/importers.js";
 import { sanitizeNumber } from "../src/utils/numbers.js";
@@ -67,6 +69,7 @@ test("buildSchedule respects locked cells", () => {
     enforceHourCap: false,
     blockedShifts: {},
     noWeekends: false,
+    color: "#123456",
   };
   const originalRandom = Math.random;
   Math.random = () => 0.1;
@@ -94,6 +97,7 @@ test("buildSchedule does not double-assign when a shift is locked", () => {
     enforceHourCap: false,
     blockedShifts: {},
     noWeekends: false,
+    color: "#aaaaaa",
   };
   const w2 = { ...w1, id: "w2", name: "Bea", order: 1 };
   const lockedRows = [
@@ -119,6 +123,7 @@ test("buildSchedule balances hours close to target", () => {
     enforceHourCap: false,
     blockedShifts: {},
     noWeekends: false,
+    color: "#0aa0aa",
   };
   const workers = [
     { ...base, id: "w1", name: "A", order: 0 },
@@ -138,6 +143,25 @@ test("buildSchedule balances hours close to target", () => {
   assert.ok(max - min <= 12);
 });
 
+test("buildSchedule carries worker color into schedule rows", () => {
+  const worker = {
+    id: "w1",
+    name: "Color Test",
+    order: 0,
+    maxHours: 168,
+    shiftHours: 12,
+    preference: "balanced",
+    enforceHourCap: false,
+    blockedShifts: {},
+    noWeekends: false,
+    color: "#abcdef",
+  };
+  const schedule = buildSchedule([worker], 1, 2025, [], {
+    maxStreak: { D: 3, N: 2, ANY: 3 },
+  });
+  assert.equal(schedule.rows[0].color, "#abcdef");
+});
+
 test("reorderScheduleRows moves a worker row with its slots and locks", () => {
   const workers = [
     {
@@ -150,6 +174,7 @@ test("reorderScheduleRows moves a worker row with its slots and locks", () => {
       enforceHourCap: false,
       blockedShifts: {},
       noWeekends: false,
+      color: "#111111",
     },
     {
       id: "w2",
@@ -161,6 +186,7 @@ test("reorderScheduleRows moves a worker row with its slots and locks", () => {
       enforceHourCap: false,
       blockedShifts: {},
       noWeekends: false,
+      color: "#222222",
     },
   ];
   const appState = {
@@ -204,6 +230,7 @@ test("reorderScheduleRows inserts before the target by default", () => {
       enforceHourCap: false,
       blockedShifts: {},
       noWeekends: false,
+      color: "#333333",
     },
     {
       id: "w2",
@@ -215,6 +242,7 @@ test("reorderScheduleRows inserts before the target by default", () => {
       enforceHourCap: false,
       blockedShifts: {},
       noWeekends: false,
+      color: "#444444",
     },
   ];
   const appState = {
@@ -244,6 +272,17 @@ test("reorderScheduleRows inserts before the target by default", () => {
   assert.deepEqual(appState.workers.map((worker) => worker.order), [0, 1]);
 });
 
+test("normalizeImportedWorkers assigns a color when missing", () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0.5;
+  const workers = normalizeImportedWorkers([
+    { id: "w1", name: "Alex" },
+  ]);
+  Math.random = originalRandom;
+  assert.equal(workers[0].color, "#7fffff");
+  assert.ok(isHexColor(workers[0].color));
+});
+
 test("deriveScheduleInsights detects night-to-day transitions", () => {
   const worker = {
     id: "w1",
@@ -255,6 +294,7 @@ test("deriveScheduleInsights detects night-to-day transitions", () => {
     enforceHourCap: false,
     blockedShifts: {},
     noWeekends: false,
+    color: "#555555",
   };
   const schedule = {
     days: [
@@ -283,6 +323,7 @@ test("deriveScheduleInsights warns on blocked shifts", () => {
     enforceHourCap: false,
     blockedShifts: { 1: ["N"] },
     noWeekends: false,
+    color: "#666666",
   };
   const schedule = {
     days: [
@@ -311,6 +352,7 @@ test("computeSummaryFromSchedule calculates totals and warnings", () => {
       enforceHourCap: false,
       blockedShifts: {},
       noWeekends: false,
+      color: "#777777",
     },
   ];
   const schedule = {

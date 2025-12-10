@@ -1,6 +1,7 @@
 import { BUTTON_LABELS, DEFAULT_FORM_NUMBERS, DEFAULT_FORM_VALUES } from "../constants/defaults.js";
 import { getBlockedShifts, setBlockedShifts } from "../utils/forms.js";
 import { sanitizeNumber } from "../utils/numbers.js";
+import { isHexColor, randomHexColor } from "../utils/colors.js";
 
 /**
  * Extracts worker payload from form data.
@@ -12,6 +13,8 @@ export function extractWorkerPayload(formData, workerForm) {
   const rawName = formData.get("worker-name");
   const name = rawName ? String(rawName).trim() : "";
   const blockedShifts = getBlockedShifts(workerForm.querySelector("#worker-block-shifts"));
+  const colorInput = formData.get("worker-color");
+  const color = isHexColor(colorInput) ? colorInput : randomHexColor();
   return {
     name,
     maxHours: sanitizeNumber(
@@ -28,6 +31,7 @@ export function extractWorkerPayload(formData, workerForm) {
     noWeekends: false,
     enforceHourCap: formData.get("worker-limit-hours") === "on",
     blockedShifts,
+    color,
   };
 }
 
@@ -41,6 +45,7 @@ export function extractWorkerPayload(formData, workerForm) {
  *  cancelEditButton: HTMLButtonElement;
  *  workerModalTitle: HTMLElement | null;
  *  workerBlockShifts: HTMLElement | null;
+ *  workerColorInput: HTMLInputElement | null;
  * }} ui
  * @param {() => void} onShowModal
  */
@@ -52,6 +57,9 @@ export function startEditingWorker(worker, appState, ui, onShowModal) {
   ui.workerForm.querySelector("#worker-preference").value = worker.preference;
   ui.workerForm.querySelector("#worker-limit-hours").checked = Boolean(worker.enforceHourCap);
   setBlockedShifts(ui.workerBlockShifts, worker.blockedShifts || {});
+  if (ui.workerColorInput) {
+    ui.workerColorInput.value = isHexColor(worker.color) ? worker.color : randomHexColor();
+  }
   ui.workerSubmitButton.textContent = BUTTON_LABELS.save;
   ui.cancelEditButton.hidden = false;
   if (ui.workerModalTitle) {
@@ -69,6 +77,7 @@ export function startEditingWorker(worker, appState, ui, onShowModal) {
  *  cancelEditButton: HTMLButtonElement;
  *  workerModalTitle: HTMLElement | null;
  *  workerBlockShifts: HTMLElement | null;
+ *  workerColorInput: HTMLInputElement | null;
  * }} ui
  */
 export function exitEditingMode(appState, ui) {
@@ -87,6 +96,7 @@ export function exitEditingMode(appState, ui) {
  * @param {{
  *  workerForm: HTMLFormElement;
  *  workerBlockShifts: HTMLElement | null;
+ *  workerColorInput: HTMLInputElement | null;
  * }} ui
  */
 export function setDefaultFormValues(ui) {
@@ -95,4 +105,7 @@ export function setDefaultFormValues(ui) {
   ui.workerForm.querySelector("#worker-preference").value = DEFAULT_FORM_VALUES.preference;
   ui.workerForm.querySelector("#worker-limit-hours").checked = false;
   setBlockedShifts(ui.workerBlockShifts, {});
+  if (ui.workerColorInput) {
+    ui.workerColorInput.value = randomHexColor();
+  }
 }

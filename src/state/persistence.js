@@ -2,6 +2,7 @@ import { DEFAULT_FORM_NUMBERS, DEFAULT_FORM_VALUES } from "../constants/defaults
 import { STORAGE_KEY, SETTINGS_STORAGE_KEY } from "../constants/storageKeys.js";
 import { sanitizeNumber } from "../utils/numbers.js";
 import { createDefaultSettings } from "./appState.js";
+import { isHexColor, randomHexColor } from "../utils/colors.js";
 
 /**
  * Hydrates settings from localStorage into appState.
@@ -22,12 +23,14 @@ export function hydrateSettingsFromStorage(appState) {
     const day = sanitizeNumber(parsed?.maxStreak?.D, appState.settings.maxStreak.D, { min: 1 });
     const night = sanitizeNumber(parsed?.maxStreak?.N, appState.settings.maxStreak.N, { min: 1 });
     const any = sanitizeNumber(parsed?.maxStreak?.ANY, appState.settings.maxStreak.ANY, { min: 1 });
+    const useWorkerColors = Boolean(parsed?.useWorkerColors);
     appState.settings = {
       maxStreak: {
         D: day,
         N: night,
         ANY: any,
       },
+      useWorkerColors,
     };
   } catch {
     appState.settings = createDefaultSettings();
@@ -66,10 +69,15 @@ export function hydrateWorkersFromStorage(appState) {
     if (!Array.isArray(parsed)) {
       return;
     }
+    let assignedColors = false;
     const normalized = parsed
       .filter((item) => item && typeof item.id === "string")
       .map((item, index) => {
         const orderValue = Number(item.order);
+        const color = isHexColor(item.color) ? item.color : randomHexColor();
+        if (!isHexColor(item.color)) {
+          assignedColors = true;
+        }
         return {
           id: item.id,
           order: Number.isFinite(orderValue) ? orderValue : index,
@@ -81,10 +89,14 @@ export function hydrateWorkersFromStorage(appState) {
           noWeekends: false,
           enforceHourCap: Boolean(item.enforceHourCap),
           blockedShifts: normalizeBlockedShifts(item.blockedShifts),
+          color,
         };
       });
     normalized.sort((a, b) => a.order - b.order);
     appState.workers = normalized;
+    if (assignedColors) {
+      persistWorkers(appState);
+    }
   } catch {
     // ignore storage failures
   }

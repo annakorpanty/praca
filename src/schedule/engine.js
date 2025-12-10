@@ -99,6 +99,7 @@ export function buildSchedule(workers, month, year, lockedRows = [], settings) {
     return {
       id: worker.id,
       name: worker.name,
+      color: worker.color,
       slots: entry ? entry.slots : Array(daysInMonth).fill(null),
       locks: entry ? entry.locks : Array(daysInMonth).fill(false),
     };

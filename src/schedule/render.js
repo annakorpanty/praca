@@ -14,8 +14,9 @@
  *  ) => void;
  * }} handlers
  * @param {{ scheduleOutput: HTMLElement; summaryCardsContainer: HTMLElement }} targets
+ * @param {{ useWorkerColors?: boolean }} [options]
  */
-export function renderSchedule(schedule, highlights, handlers, targets) {
+export function renderSchedule(schedule, highlights, handlers, targets, options = {}) {
   const { scheduleOutput, summaryCardsContainer } = targets;
   const {
     onSlotChange,
@@ -25,6 +26,7 @@ export function renderSchedule(schedule, highlights, handlers, targets) {
     onReorderRow,
   } = handlers;
   scheduleOutput.innerHTML = "";
+  const shouldUseWorkerColors = Boolean(options.useWorkerColors);
   if (!schedule) {
     scheduleOutput.classList.add("empty-state");
     scheduleOutput.innerHTML = "<p>Dodaj recepcjonistów przed generowaniem.</p>";
@@ -95,6 +97,11 @@ export function renderSchedule(schedule, highlights, handlers, targets) {
   };
   schedule.rows.forEach((row) => {
     const tr = document.createElement("tr");
+    const rowColor = shouldUseWorkerColors && row.color ? row.color : null;
+    if (rowColor) {
+      tr.classList.add("row-colored");
+      tr.style.setProperty("--worker-color", rowColor);
+    }
     tr.dataset.rowId = row.id;
     const th = document.createElement("th");
     const rowHeader = document.createElement("div");

@@ -15,6 +15,7 @@ import { importScheduleFromJson } from "./io/importers.js";
 import { readSettingsPayload, syncSettingsFormValues } from "./settings/form.js";
 import { computeSummaryFromSchedule } from "./schedule/summary.js";
 import { createWorkerId } from "./utils/id.js";
+import { isHexColor } from "./utils/colors.js";
 
 hydrateSettingsFromStorage(appState);
 hydrateWorkersFromStorage(appState);
@@ -23,11 +24,13 @@ elements.workerForm.reset();
 setDefaultFormValues({
   workerForm: elements.workerForm,
   workerBlockShifts: elements.workerBlockShifts,
+  workerColorInput: elements.workerColorInput,
 });
 syncSettingsFormValues(appState, {
   dayInput: elements.settingsMaxStreakDayInput,
   nightInput: elements.settingsMaxStreakNightInput,
   anyInput: elements.settingsMaxStreakAnyInput,
+  useWorkerColors: elements.settingsUseWorkerColors,
 });
 renderWorkers(appState, {
   workerListElement: elements.workerListElement,
@@ -127,7 +130,11 @@ function wireWorkerForm() {
         cancelEditButton: elements.cancelEditButton,
         workerModalTitle: elements.workerModalTitle,
         workerBlockShifts: elements.workerBlockShifts,
+        workerColorInput: elements.workerColorInput,
       });
+      if (appState.currentSchedule) {
+        renderAppSchedule();
+      }
       return;
     }
 
@@ -150,6 +157,7 @@ function wireWorkerForm() {
     setDefaultFormValues({
       workerForm: elements.workerForm,
       workerBlockShifts: elements.workerBlockShifts,
+      workerColorInput: elements.workerColorInput,
     });
   });
 
@@ -160,6 +168,7 @@ function wireWorkerForm() {
       cancelEditButton: elements.cancelEditButton,
       workerModalTitle: elements.workerModalTitle,
       workerBlockShifts: elements.workerBlockShifts,
+      workerColorInput: elements.workerColorInput,
     });
   });
 }
@@ -174,6 +183,7 @@ function wireSettingsForm() {
       dayInput: elements.settingsMaxStreakDayInput,
       nightInput: elements.settingsMaxStreakNightInput,
       anyInput: elements.settingsMaxStreakAnyInput,
+      useWorkerColors: elements.settingsUseWorkerColors,
     });
     appState.settings = payload;
     persistSettings(appState);
@@ -261,10 +271,16 @@ function wireControls() {
 function generateSchedule() {
   if (appState.workers.length === 0) {
     appState.currentSchedule = null;
-    renderSchedule(null, { columns: [], cells: [] }, noopHandlers(), {
-      scheduleOutput: elements.scheduleOutput,
-      summaryCardsContainer: elements.summaryCardsContainer,
-    });
+    renderSchedule(
+      null,
+      { columns: [], cells: [] },
+      noopHandlers(),
+      {
+        scheduleOutput: elements.scheduleOutput,
+        summaryCardsContainer: elements.summaryCardsContainer,
+      },
+      { useWorkerColors: Boolean(appState.settings.useWorkerColors) },
+    );
     renderWarnings(["Najpierw dodaj co najmniej jednego recepcjonistę."], {
       list: elements.warningsList,
       section: elements.warningsSection,
@@ -286,15 +302,22 @@ function renderAppSchedule() {
   updateSchedulePeriodText(selectedMonth, selectedYear, elements.schedulePeriod, MONTHS);
 
   if (!appState.currentSchedule) {
-    renderSchedule(null, { columns: [], cells: [] }, noopHandlers(), {
-      scheduleOutput: elements.scheduleOutput,
-      summaryCardsContainer: elements.summaryCardsContainer,
-    });
+    renderSchedule(
+      null,
+      { columns: [], cells: [] },
+      noopHandlers(),
+      {
+        scheduleOutput: elements.scheduleOutput,
+        summaryCardsContainer: elements.summaryCardsContainer,
+      },
+      { useWorkerColors: Boolean(appState.settings.useWorkerColors) },
+    );
     renderWarnings([], { list: elements.warningsList, section: elements.warningsSection });
     renderSummary([], elements.summaryCardsContainer);
     return;
   }
   const { schedule, month, year } = appState.currentSchedule;
+  applyWorkerColorsToRows(schedule.rows, appState.workers);
   const summary = computeSummaryFromSchedule(schedule, appState.workers);
   appState.currentSchedule.schedule.summary = summary;
   const insights = deriveScheduleInsights(
@@ -349,9 +372,29 @@ function renderAppSchedule() {
       scheduleOutput: elements.scheduleOutput,
       summaryCardsContainer: elements.summaryCardsContainer,
     },
+    { useWorkerColors: Boolean(appState.settings.useWorkerColors) },
   );
   renderWarnings(insights.warnings, { list: elements.warningsList, section: elements.warningsSection });
   renderSummary(insights.summary, elements.summaryCardsContainer);
+}
+
+/**
+ * Syncs worker-assigned colors into schedule rows for rendering.
+ * @param {import("./types.js").ScheduleRow[]} rows
+ * @param {import("./types.js").Worker[]} workers
+ */
+function applyWorkerColorsToRows(rows, workers) {
+  const colorMap = new Map(
+    workers
+      .filter((worker) => isHexColor(worker.color))
+      .map((worker) => [worker.id, worker.color]),
+  );
+  rows.forEach((row) => {
+    const color = colorMap.get(row.id);
+    if (color) {
+      row.color = color;
+    }
+  });
 }
 
 function handleStartEdit(worker) {
@@ -364,6 +407,7 @@ function handleStartEdit(worker) {
       cancelEditButton: elements.cancelEditButton,
       workerModalTitle: elements.workerModalTitle,
       workerBlockShifts: elements.workerBlockShifts,
+      workerColorInput: elements.workerColorInput,
     },
     () => showWorkerModal("edit"),
   );
@@ -387,6 +431,7 @@ function deleteWorker(workerId) {
       cancelEditButton: elements.cancelEditButton,
       workerModalTitle: elements.workerModalTitle,
       workerBlockShifts: elements.workerBlockShifts,
+      workerColorInput: elements.workerColorInput,
     });
   }
 }
@@ -399,6 +444,7 @@ function showWorkerModal(mode = "add") {
       cancelEditButton: elements.cancelEditButton,
       workerModalTitle: elements.workerModalTitle,
       workerBlockShifts: elements.workerBlockShifts,
+      workerColorInput: elements.workerColorInput,
     });
   }
   if (elements.workerModalTitle) {
@@ -428,6 +474,7 @@ function closeWorkerModal() {
     cancelEditButton: elements.cancelEditButton,
     workerModalTitle: elements.workerModalTitle,
     workerBlockShifts: elements.workerBlockShifts,
+    workerColorInput: elements.workerColorInput,
   });
 }
 
@@ -436,6 +483,7 @@ function showSettingsModal() {
     dayInput: elements.settingsMaxStreakDayInput,
     nightInput: elements.settingsMaxStreakNightInput,
     anyInput: elements.settingsMaxStreakAnyInput,
+    useWorkerColors: elements.settingsUseWorkerColors,
   });
   if (!elements.settingsModal) {
     return;

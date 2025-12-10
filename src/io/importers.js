@@ -1,5 +1,6 @@
 import { DEFAULT_FORM_NUMBERS, DEFAULT_FORM_VALUES } from "../constants/defaults.js";
 import { DAY_NAMES } from "../constants/dates.js";
+import { isHexColor, randomHexColor } from "../utils/colors.js";
 import { sanitizeNumber } from "../utils/numbers.js";
 
 /**
@@ -22,7 +23,8 @@ export function importScheduleFromJson(data, appState, controls, persistWorkers)
     const targetMonth = Number(month) || Number(controls.monthSelect.value) || new Date().getMonth() + 1;
     const targetYear = Number(year) || Number(controls.yearSelect.value) || new Date().getFullYear();
     const normalizedWorkers = normalizeImportedWorkers(workers);
-    const normalizedSchedule = normalizeImportedSchedule(schedule, targetMonth, targetYear);
+    const colorMap = new Map(normalizedWorkers.map((worker) => [worker.id, worker.color]));
+    const normalizedSchedule = normalizeImportedSchedule(schedule, targetMonth, targetYear, colorMap);
 
     appState.workers = normalizedWorkers;
     persistWorkers(appState);
@@ -62,6 +64,7 @@ export function normalizeImportedWorkers(list) {
       enforceHourCap: Boolean(item.enforceHourCap),
       blockedShifts: normalizeBlockedShifts(item.blockedShifts),
       noWeekends: false,
+      color: isHexColor(item.color) ? item.color : randomHexColor(),
     }))
     .sort((a, b) => a.order - b.order);
 }
@@ -71,9 +74,10 @@ export function normalizeImportedWorkers(list) {
  * @param {any} rawSchedule
  * @param {number} month
  * @param {number} year
+ * @param {Map<string, string>} [colorMap]
  * @returns {import("../types.js").Schedule}
  */
-export function normalizeImportedSchedule(rawSchedule, month, year) {
+export function normalizeImportedSchedule(rawSchedule, month, year, colorMap = new Map()) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, idx) => {
     const dayNum = rawSchedule?.days?.[idx]?.day ?? idx + 1;
@@ -106,6 +110,7 @@ export function normalizeImportedSchedule(rawSchedule, month, year) {
             name: row.name,
             slots: normalizedSlots,
             locks: normalizedLocks,
+            color: colorMap.get(row.id),
           };
         })
     : [];

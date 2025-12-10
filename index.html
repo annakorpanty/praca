@@ -72,7 +72,10 @@
     <template id="worker-row-template">
       <li class="worker-row">
         <div class="worker-row__info">
-          <h3 data-worker-name></h3>
+          <div class="worker-row__topline">
+            <div class="worker-row__color" data-worker-color></div>
+            <h3 data-worker-name></h3>
+          </div>
           <p data-worker-details></p>
           <div class="tag-grid">
             <span class="tag" data-worker-preference></span>
@@ -121,7 +124,7 @@
                   required
                 />
               </div>
-              <div class="form-group inline">
+              <div class="form-group">
                 <div class="shift-hours-field hidden-field">
                   <label for="worker-shift-hours">Długość zmiany (godz.)</label>
                   <input
@@ -134,15 +137,21 @@
                     value="12"
                   />
                 </div>
-                <div>
-                  <label for="worker-preference">Preferencje zmian</label>
-                  <select id="worker-preference" name="worker-preference">
-                    <option value="balanced">Bez preferencji</option>
-                    <option value="prefer-days">Woli dni</option>
-                    <option value="prefer-nights">Woli noce</option>
-                    <option value="only-days">Tylko dni</option>
-                    <option value="only-nights">Tylko noce</option>
-                  </select>
+                <div class="inline-fields two-col">
+                  <div>
+                    <label for="worker-preference">Preferencje zmian</label>
+                    <select id="worker-preference" name="worker-preference">
+                      <option value="balanced">Bez preferencji</option>
+                      <option value="prefer-days">Woli dni</option>
+                      <option value="prefer-nights">Woli noce</option>
+                      <option value="only-days">Tylko dni</option>
+                      <option value="only-nights">Tylko noce</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="worker-color">Kolor pracownika</label>
+                    <input id="worker-color" name="worker-color" type="color" class="compact-color" />
+                  </div>
                 </div>
               </div>
               <div class="form-group">
@@ -298,6 +307,13 @@
                   step="1"
                 />
               </div>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" id="settings-use-worker-colors" name="settings-use-worker-colors" />
+                <span>Używaj kolorów dla pracowników</span>
+              </label>
+              <p class="form-hint">Podświetla cały wiersz grafiku wybranym kolorem pracownika.</p>
             </div>
             <div class="form-actions">
               <button type="submit" id="settings-submit-btn" class="add-worker-btn">Zapisz</button>

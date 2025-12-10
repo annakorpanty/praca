@@ -26,6 +26,12 @@ export function renderWorkers(appState, targets, handlers) {
     const details = `${worker.shiftHours}h zmiana • ≤${worker.maxHours}h / miesiąc`;
     row.querySelector("[data-worker-details]").textContent = details;
     row.querySelector("[data-worker-preference]").textContent = formatPreference(worker.preference);
+    const colorSwatch = row.querySelector("[data-worker-color]");
+    if (colorSwatch) {
+      colorSwatch.style.backgroundColor = worker.color || "#e2e8f0";
+      colorSwatch.dataset.color = worker.color || "";
+      colorSwatch.title = worker.color ? `Kolor: ${worker.color}` : "Brak koloru";
+    }
     const blockedTags = [];
     const blockedLabel = formatBlockedShifts(worker.blockedShifts);
     if (blockedLabel) {
