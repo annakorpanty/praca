@@ -13,41 +13,41 @@
 - PNG/JSON exporters re-implement formatting instead of using shared data projections.
 
 ## Target module layout (ES modules, `type="module"` in `index.html`)
-- `src/constants/`
+- `grafik/src/constants/`
   - `dates.js`: `MONTHS`, `DAY_NAMES`.
   - `storageKeys.js`: `STORAGE_KEY`, `SETTINGS_STORAGE_KEY`.
   - `defaults.js`: default form values, streak limits, block targets.
-- `src/state/`
+- `grafik/src/state/`
   - `appState.js`: in-memory state object and getters/setters.
   - `persistence.js`: hydrate/persist workers/settings with validation.
-- `src/dom/`
+- `grafik/src/dom/`
   - `elements.js`: DOM lookups and template accessors.
   - `handlers.js`: shared event helpers (e.g., modal open/close guards).
-- `src/workers/`
+- `grafik/src/workers/`
   - `form.js`: extract/validate worker payloads, defaulting, edit/reset flow.
   - `list.js`: render worker rows, bind edit/delete actions.
-- `src/settings/`
+- `grafik/src/settings/`
   - `form.js`: load/save settings, validation helpers.
-- `src/schedule/`
+- `grafik/src/schedule/`
   - `engine.js`: pure `buildSchedule(workers, month, year, lockedRows)` with no DOM access.
   - `insights.js`: `deriveScheduleInsights`, coverage/night-to-day/blocked/streak checks.
   - `summary.js`: compute per-worker totals/warnings from schedule.
   - `render.js`: render schedule table, highlights, warnings, summary to DOM.
   - `locks.js`: helpers for lock toggling/updateSlotValue.
-- `src/io/`
+- `grafik/src/io/`
   - `exporters.js`: PNG/JSON export using shared projections.
   - `importers.js`: JSON import normalization and hydration hooks.
-- `src/utils/`
+- `grafik/src/utils/`
   - `numbers.js`: `sanitizeNumber`, `randomInt`.
   - `dates.js`: `formatDate`, `formatDateRange`, month/year helpers.
   - `forms.js`: checkbox helpers, preference formatting.
-- `src/init.js`: orchestrates boot sequence (hydrate state, init selectors, bind events, initial render).
+- `grafik/src/init.js`: orchestrates boot sequence (hydrate state, init selectors, bind events, initial render).
 
 ## Refactor phases
-1) **Switch to modules safely**: change script tag to `type="module"`, add `src/init.js` that imports existing monolith (temporarily split into exported functions) without behavior changes. Add smoke checklist (generate schedule, add/edit/delete worker, export/import).
-2) **Extract pure core**: move scheduling engine + summary/insights into `src/schedule/` as pure functions (no DOM/state mutation). Add JSDoc signatures and defaulted params; keep old entrypoint calling new functions.
+1) **Switch to modules safely**: change script tag to `type="module"`, add `grafik/src/init.js` that imports existing monolith (temporarily split into exported functions) without behavior changes. Add smoke checklist (generate schedule, add/edit/delete worker, export/import).
+2) **Extract pure core**: move scheduling engine + summary/insights into `grafik/src/schedule/` as pure functions (no DOM/state mutation). Add JSDoc signatures and defaulted params; keep old entrypoint calling new functions.
 3) **State & persistence**: isolate `appState` plus hydrate/persist logic; expose typed accessors to avoid accidental mutations. Ensure locked rows normalization lives here.
-4) **DOM/render separation**: move rendering (schedule table, warnings, summary) and template helpers into `src/schedule/render.js`; ensure it receives plain data and highlight descriptors only.
+4) **DOM/render separation**: move rendering (schedule table, warnings, summary) and template helpers into `grafik/src/schedule/render.js`; ensure it receives plain data and highlight descriptors only.
 5) **Forms & modals**: extract worker/settings form flows and modal controls into dedicated modules; expose init functions to wire events in `init.js`.
 6) **I/O modules**: split PNG/JSON export/import using data projections from schedule + summary modules; keep all user-facing strings centralized for reuse.
 7) **Cleanup & contracts**: remove leftover globals, ensure every module exports a minimal public API; document state shapes and function contracts via JSDoc.

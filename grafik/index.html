@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<!--
+  Version: 0.4
+  Date: 8 Dec 2025
+  Creator: Nico Kalkusinski
+  License: Closed; no rights to edit, copy, or distribute. Usage permitted only by personnel of "Hotel Ibis Bielsko Biala".
+-->
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grafik recepcji hotelowej</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <h1>Grafik recepcji</h1>
+      </div>
+      <div class="generator-controls">
+        <div class="form-control">
+          <label for="month-select">Miesiąc</label>
+          <select id="month-select"></select>
+        </div>
+        <div class="form-control">
+          <label for="year-select">Rok</label>
+          <select id="year-select"></select>
+        </div>
+        <button id="generate-btn" type="button">Generuj grafik</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel schedule-panel">
+        <header class="schedule-header">
+          <h2>Grafik <span id="schedule-period" class="schedule-period"></span></h2>
+          <div class="schedule-actions">
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="open-worker-modal">Zarządzaj kadrą</button>
+              <button type="button" class="ghost-btn small" id="open-settings-modal">Opcje grafiku</button>
+            </div>
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="block-all-btn">Zablokuj wszystko</button>
+              <button type="button" class="ghost-btn small" id="unblock-all-btn">Odblokuj wszystko</button>
+            </div>
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="export-btn">Zapisz PNG</button>
+            </div>
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="export-json-btn">Eksport JSON</button>
+              <label class="ghost-btn small file-btn" for="import-json-input">Import JSON</label>
+              <input type="file" id="import-json-input" accept="application/json" hidden />
+            </div>
+            <div class="action-group">
+              <button type="button" class="ghost-btn small" id="help-btn">Pomoc</button>
+            </div>
+          </div>
+        </header>
+        <div id="schedule-output" class="schedule-output empty-state">
+          <p>Dodaj recepcjonistów i kliknij „Generuj grafik”.</p>
+        </div>
+        <section class="summary-sections">
+          <div class="summary-grid">
+            <div id="notes-section" class="panel-block">
+              <h3 id="notes-heading">Notatki</h3>
+              <textarea
+                id="notes-input"
+                class="notes-textarea"
+                aria-labelledby="notes-heading"
+                placeholder="Dodaj notatki do tego grafiku"
+              ></textarea>
+            </div>
+            <div id="warnings-section" class="panel-block">
+              <h3>Ostrzeżenia</h3>
+              <ul id="warnings-list"></ul>
+            </div>
+          </div>
+          <div class="panel-block">
+            <h3>Podsumowania</h3>
+            <div id="summary-cards" class="summary-cards"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="worker-row-template">
+      <li class="worker-row">
+        <div class="worker-row__info">
+          <div class="worker-row__topline">
+            <div class="worker-row__color" data-worker-color></div>
+            <h3 data-worker-name></h3>
+          </div>
+          <p data-worker-details></p>
+          <div class="tag-grid">
+            <span class="tag" data-worker-preference></span>
+          </div>
+        </div>
+        <div class="worker-row__actions">
+          <button type="button" class="edit-btn">Edytuj</button>
+          <button type="button" class="delete-btn">Usuń</button>
+        </div>
+      </li>
+    </template>
+
+    <dialog id="worker-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <div>
+            <p class="modal-eyebrow">Recepcjoniści</p>
+            <h2 id="modal-title">Dodaj osobę</h2>
+          </div>
+          <button type="button" class="close-btn" id="close-worker-modal" aria-label="Zamknij">
+            ×
+          </button>
+        </header>
+        <section class="modal-body">
+          <div class="modal-columns">
+            <form id="worker-form" class="worker-form">
+              <div class="form-group">
+                <label for="worker-name">Imię i nazwisko</label>
+                <input
+                  id="worker-name"
+                  name="worker-name"
+                  type="text"
+                  required
+                  placeholder="np. Lea"
+                />
+              </div>
+              <div class="form-group">
+                <label for="worker-max-hours">Maks. godziny / miesiąc</label>
+                <input
+                  id="worker-max-hours"
+                  name="worker-max-hours"
+                  type="number"
+                  min="12"
+                  step="6"
+                  value="168"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <div class="shift-hours-field hidden-field">
+                  <label for="worker-shift-hours">Długość zmiany (godz.)</label>
+                  <input
+                    id="worker-shift-hours"
+                    name="worker-shift-hours"
+                    type="number"
+                    min="4"
+                    max="24"
+                    step="1"
+                    value="12"
+                  />
+                </div>
+                <div class="inline-fields two-col">
+                  <div>
+                    <label for="worker-preference">Preferencje zmian</label>
+                    <select id="worker-preference" name="worker-preference">
+                      <option value="balanced">Bez preferencji</option>
+                      <option value="prefer-days">Woli dni</option>
+                      <option value="prefer-nights">Woli noce</option>
+                      <option value="only-days">Tylko dni</option>
+                      <option value="only-nights">Tylko noce</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="worker-color">Kolor pracownika</label>
+                    <input id="worker-color" name="worker-color" type="color" class="compact-color" />
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Nie pracuje w (zmiany)</label>
+                <table class="blocked-shifts-table" id="worker-block-shifts">
+                  <thead>
+                    <tr>
+                      <th>Dzień tygodnia</th>
+                      <th>D</th>
+                      <th>N</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Poniedziałek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="1" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="1" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Wtorek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="2" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="2" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Środa</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="3" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="3" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Czwartek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="4" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="4" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Piątek</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="5" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="5" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Sobota</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="6" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="6" data-shift="N" />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Niedziela</td>
+                      <td class="center">
+                        <input type="checkbox" data-day="0" data-shift="D" />
+                      </td>
+                      <td class="center">
+                        <input type="checkbox" data-day="0" data-shift="N" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            <div class="form-checkboxes">
+              <label class="checkbox">
+                <input id="worker-limit-hours" name="worker-limit-hours" type="checkbox" />
+                <span>Nie przekraczaj limitu godzin</span>
+              </label>
+            </div>
+              <div class="form-actions">
+                <button type="submit" id="worker-submit-btn" class="add-worker-btn">
+                  Dodaj recepcjonistę
+                </button>
+                <button
+                  type="button"
+                  id="cancel-edit-btn"
+                  class="ghost-btn"
+                  hidden
+                >
+                  Anuluj edycję
+                </button>
+              </div>
+            </form>
+            <div class="modal-worker-list">
+              <h3>Lista recepcjonistów</h3>
+              <ul id="worker-list" class="worker-list"></ul>
+            </div>
+          </div>
+        </section>
+      </div>
+    </dialog>
+
+    <dialog id="settings-modal">
+      <div class="modal-card">
+        <header class="modal-header">
+          <div>
+            <p class="modal-eyebrow">Grafik</p>
+            <h2>Opcje grafiku</h2>
+          </div>
+          <button type="button" class="close-btn" id="close-settings-modal" aria-label="Zamknij">
+            ×
+          </button>
+        </header>
+        <section class="modal-body">
+          <form id="settings-form" class="worker-form">
+            <div class="form-group settings-row">
+              <div>
+                <label for="settings-max-streak-day">Maks. dni pod rząd (D)</label>
+                <input
+                  id="settings-max-streak-day"
+                  name="settings-max-streak-day"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="1"
+                />
+              </div>
+              <div>
+                <label for="settings-max-streak-night">Maks. nocy pod rząd (N)</label>
+                <input
+                  id="settings-max-streak-night"
+                  name="settings-max-streak-night"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="1"
+                />
+              </div>
+              <div>
+                <label for="settings-max-streak-any">Maks. zmian pod rząd (D lub N)</label>
+                <input
+                  id="settings-max-streak-any"
+                  name="settings-max-streak-any"
+                  type="number"
+                  min="1"
+                  max="15"
+                  step="1"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="checkbox">
+                <input type="checkbox" id="settings-use-worker-colors" name="settings-use-worker-colors" />
+                <span>Używaj kolorów dla pracowników</span>
+              </label>
+              <p class="form-hint">Podświetla cały wiersz grafiku wybranym kolorem pracownika.</p>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="settings-submit-btn" class="add-worker-btn">Zapisz</button>
+              <button type="button" id="cancel-settings-btn" class="ghost-btn">Anuluj</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </dialog>
+
+    <script type="module" src="./src/init.js?v=notes-2"></script>
+  </body>
+</html>

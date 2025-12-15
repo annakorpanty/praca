@@ -1,21 +1,21 @@
 # Schedule module guide
 
 ## Module map
-- `src/init.js` — orchestrates hydration, event wiring, renders schedule.
-- `src/constants/*` — shared defaults, month/day labels, storage keys.
-- `src/state/appState.js` — in-memory state container seeded with defaults.
-- `src/state/persistence.js` — hydrate/persist workers + settings to `localStorage`.
-- `src/utils/*` — form helpers, date formatting, numeric guards, id generator.
-- `src/workers/form.js` — worker form extraction, edit/reset flows.
-- `src/workers/list.js` — renders worker list with edit/delete hooks.
-- `src/settings/form.js` — settings form sync + payload sanitization.
-- `src/schedule/engine.js` — pure scheduler (`buildSchedule`) and streak helpers.
-- `src/schedule/summary.js` — per-worker totals + overtime detection.
-- `src/schedule/insights.js` — warnings/highlights (coverage, N→D, blocked, streaks).
-- `src/schedule/render.js` — DOM rendering for schedule table, summary, warnings.
-- `src/schedule/locks.js` — slot edits and lock toggling.
-- `src/io/exporters.js` — PNG/JSON export.
-- `src/io/importers.js` — JSON import + normalization.
+- `grafik/src/init.js` — orchestrates hydration, event wiring, renders schedule.
+- `grafik/src/constants/*` — shared defaults, month/day labels, storage keys.
+- `grafik/src/state/appState.js` — in-memory state container seeded with defaults.
+- `grafik/src/state/persistence.js` — hydrate/persist workers + settings to `localStorage`.
+- `grafik/src/utils/*` — form helpers, date formatting, numeric guards, id generator.
+- `grafik/src/workers/form.js` — worker form extraction, edit/reset flows.
+- `grafik/src/workers/list.js` — renders worker list with edit/delete hooks.
+- `grafik/src/settings/form.js` — settings form sync + payload sanitization.
+- `grafik/src/schedule/engine.js` — pure scheduler (`buildSchedule`) and streak helpers.
+- `grafik/src/schedule/summary.js` — per-worker totals + overtime detection.
+- `grafik/src/schedule/insights.js` — warnings/highlights (coverage, N→D, blocked, streaks).
+- `grafik/src/schedule/render.js` — DOM rendering for schedule table, summary, warnings.
+- `grafik/src/schedule/locks.js` — slot edits and lock toggling.
+- `grafik/src/io/exporters.js` — PNG/JSON export.
+- `grafik/src/io/importers.js` — JSON import + normalization.
 
 ## Data shapes
 - `Worker`: `{ id, name, order, maxHours, shiftHours, preference, enforceHourCap, blockedShifts }` where `blockedShifts` is a map `{ [weekdayIndex]: ["D","N"] }`.
